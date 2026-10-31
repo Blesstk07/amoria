@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import './Register.css'
@@ -43,6 +42,7 @@ function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState({
     email: '',
@@ -120,8 +120,9 @@ function Register() {
     setStep((previous) => Math.max(previous - 1, 1))
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
+
     setError('')
     setMessage('')
 
@@ -135,14 +136,50 @@ function Register() {
       return
     }
 
-    setMessage(
-      "Votre formulaire est prêt. La création du compte et la vérification de votre e-mail seront activées avec notre API PHP."
-    )
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          pseudonym: formData.pseudonym,
+          dateOfBirth: formData.dateOfBirth,
+          gender: formData.gender,
+          country: formData.country,
+          city: formData.city,
+          bio: formData.bio,
+          interests: formData.interests,
+          confirmedAdult: formData.confirmedAdult,
+          acceptedTerms: formData.acceptedTerms
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        setError(
+          result.message || 'Une erreur est survenue lors de l’inscription.'
+        )
+        return
+      }
+
+      setMessage(result.message)
+    } catch (err) {
+      console.error('Erreur lors de l’inscription :', err)
+
+      setError('Impossible de contacter le serveur. Vérifiez votre connexion.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <main className="register-page">
-
       {/* Présentation visuelle */}
       <aside className="register-visual">
         <div className="register-visual-overlay" />
@@ -175,9 +212,7 @@ function Register() {
 
       {/* Formulaire d'inscription */}
       <section className="register-form-section">
-
         <div className="register-form-container">
-
           <Link to="/" className="register-mobile-brand">
             amoria <span>♥</span>
           </Link>
@@ -185,9 +220,7 @@ function Register() {
           <div className="register-heading">
             <span className="register-small-title">REJOIGNEZ AMORIA</span>
             <h2>Créons votre compte.</h2>
-            <p>
-              Quelques étapes suffisent pour commencer votre aventure.
-            </p>
+            <p>Quelques étapes suffisent pour commencer votre aventure.</p>
           </div>
 
           {/* Progression */}
@@ -216,7 +249,6 @@ function Register() {
             className="register-form"
             onSubmit={step === 4 ? handleSubmit : nextStep}
           >
-
             {/* ÉTAPE 1 : COMPTE */}
             {step === 1 && (
               <div className="register-step-content">
@@ -332,9 +364,7 @@ function Register() {
                     max={new Date().toISOString().split('T')[0]}
                     required
                   />
-                  <small>
-                    Cette information restera confidentielle.
-                  </small>
+                  <small>Cette information restera confidentielle.</small>
                 </div>
 
                 <div className="register-field">
@@ -366,7 +396,7 @@ function Register() {
                 </div>
 
                 <div className="register-field">
-                <label htmlFor="register-country">Pays de résidence</label>
+                  <label htmlFor="register-country">Pays de résidence</label>
                   <input
                     id="register-country"
                     type="text"
@@ -392,9 +422,7 @@ function Register() {
                 </div>
 
                 <div className="register-field">
-                  <label htmlFor="register-bio">
-                    Quelques mots sur vous
-                  </label>
+                  <label htmlFor="register-bio">Quelques mots sur vous</label>
                   <textarea
                     id="register-bio"
                     name="bio"
@@ -452,9 +480,7 @@ function Register() {
                       checked={formData.confirmedAdult}
                       onChange={updateField}
                     />
-                    <span>
-                      Je confirme avoir au moins 18 ans.
-                    </span>
+                    <span>Je confirme avoir au moins 18 ans.</span>
                   </label>
 
                   <label className="register-consent">
@@ -465,8 +491,9 @@ function Register() {
                       onChange={updateField}
                     />
                     <span>
-                      J'accepte les <Link to="/terms">conditions d'utilisation </Link>
-                      et la <Link to="/privacy">politique de confidentialité</Link>.
+                      J'accepte les{' '}
+                      <Link to="/terms">conditions d'utilisation</Link> et la{' '}
+                      <Link to="/privacy">politique de confidentialité</Link>.
                     </span>
                   </label>
                 </div>
@@ -486,7 +513,11 @@ function Register() {
             )}
 
             <div className="register-actions">
-              {step > 1 && (
+              {message ? (
+                <Link to="/" className="register-back">
+                  ← Retour à l'accueil
+                </Link>
+              ) : step > 1 ? (
                 <button
                   type="button"
                   className="register-back"
@@ -494,18 +525,22 @@ function Register() {
                 >
                   ← Retour
                 </button>
-              )}
+              ) : null}
 
               <button
                 type="submit"
                 className="register-next"
-                disabled={Boolean(message)}
+                disabled={isSubmitting || Boolean(message)}
               >
-                {step === 4 ? 'Créer mon compte' : 'Continuer'}
-                <span>→</span>
+                {isSubmitting
+                  ? 'Création en cours...'
+                  : step === 4
+                    ? 'Créer mon compte'
+                    : 'Continuer'}
+
+                {!isSubmitting && <span>→</span>}
               </button>
             </div>
-
           </form>
 
           <div className="register-login">
@@ -516,7 +551,6 @@ function Register() {
           <p className="register-security-note">
             ♥ Vos informations personnelles restent confidentielles.
           </p>
-
         </div>
       </section>
     </main>
