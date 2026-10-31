@@ -1,0 +1,563 @@
+
+.register-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  background: var(--color-ivory);
+}
+
+/* Partie visuelle */
+
+.register-visual {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 45px 7%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: white;
+  background-image: url('/images/amoria.jpg');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.register-visual-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(41, 35, 41, 0.66),
+    rgba(91, 29, 53, 0.76)
+  );
+}
+
+.register-brand,
+.register-visual-content,
+.register-visual-bottom {
+  position: relative;
+  z-index: 1;
+}
+
+.register-brand,
+.register-mobile-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.register-brand {
+  color: white;
+}
+
+.register-brand span,
+.register-mobile-brand span {
+  color: var(--color-rose);
+}
+
+.register-visual-content {
+  max-width: 520px;
+  margin: auto 0;
+  padding: 60px 0;
+}
+
+.register-eyebrow,
+.register-small-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.register-eyebrow {
+  color: #F3C5D1;
+}
+
+.register-visual-content h1 {
+  margin: 24px 0;
+  color: white;
+  font-size: clamp(2.7rem, 4vw, 4rem);
+  line-height: 1.18;
+}
+
+.register-visual-content h1 em {
+  color: #F0B9C9;
+  font-weight: 400;
+}
+
+.register-visual-content p {
+  max-width: 390px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.9rem;
+  line-height: 1.9;
+}
+
+.register-visual-bottom {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.75rem;
+}
+
+/* Formulaire */
+
+.register-form-section {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 55px 9%;
+}
+
+.register-form-container {
+  width: 100%;
+  max-width: 520px;
+}
+
+.register-mobile-brand {
+  display: none;
+}
+
+.register-heading {
+  margin-bottom: 30px;
+}
+
+.register-small-title {
+  color: var(--color-primary);
+}
+
+.register-heading h2 {
+  margin: 13px 0 10px;
+  color: var(--color-charcoal);
+  font-size: clamp(2rem, 3vw, 2.65rem);
+  line-height: 1.2;
+}
+
+.register-heading p {
+  color: var(--color-muted);
+  font-size: 0.87rem;
+  line-height: 1.7;
+}
+
+/* Progression */
+
+.register-progress {
+  margin-bottom: 35px;
+}
+
+.register-progress-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.register-progress-track {
+  width: 100%;
+  height: 5px;
+  border-radius: 20px;
+  background: #EEDFE3;
+  overflow: hidden;
+}
+
+.register-progress-fill {
+  height: 100%;
+  border-radius: 20px;
+  background: var(--color-primary);
+  transition: width 0.3s ease;
+}
+
+.register-step-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 11px;
+  color: #A99DA3;
+  font-size: 0.68rem;
+}
+
+.register-step-labels span.active {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* Étapes */
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.register-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.register-step-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 5px;
+}
+
+.register-step-heading > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 39px;
+  height: 39px;
+  border-radius: 50%;
+  background: #F3E4E9;
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.register-step-heading h3 {
+  margin: 0 0 5px;
+  color: var(--color-charcoal);
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.register-step-heading p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+/* Champs */
+
+.register-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.register-field > label {
+  color: var(--color-charcoal);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.register-field input,
+.register-field select,
+.register-field textarea {
+  width: 100%;
+  min-height: 52px;
+  padding: 13px 15px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  outline: none;
+  background: white;
+  color: var(--color-charcoal);
+  font-size: 0.84rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.register-field textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.7;
+}
+
+.register-field input:focus,
+.register-field select:focus,
+.register-field textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(141, 48, 79, 0.08);
+}
+
+.register-field input::placeholder,
+.register-field textarea::placeholder {
+  color: #B5AAB0;
+}
+
+.register-field small {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+}
+
+/* Mot de passe */
+
+.register-password-wrapper {
+  position: relative;
+}
+
+.register-password-wrapper input {
+  padding-right: 95px;
+}
+
+.register-password-wrapper button {
+  position: absolute;
+  top: 50%;
+  right: 13px;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+/* Centres d'intérêt */
+
+.register-interests {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.register-interest {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 43px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: white;
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.register-interest input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.register-interest.selected {
+  border-color: var(--color-primary);
+  background: #F8E9ED;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.register-interest-count {
+  margin: -10px 0 0;
+  color: var(--color-muted);
+  font-size: 0.72rem;
+}
+
+/* Consentements */
+
+.register-consents {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 9px;
+  background: #F7EFEE;
+}
+
+.register-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  line-height: 1.7;
+  cursor: pointer;
+}
+
+.register-consent input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: var(--color-primary);
+}
+
+.register-consent a {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* Messages */
+
+.register-error,
+.register-success {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.register-error {
+  background: #FCE9E9;
+  color: #A32929;
+}
+
+.register-success {
+  background: #EAF5EC;
+  color: #28633B;
+}
+
+/* Boutons */
+
+.register-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.register-next,
+.register-back {
+  min-height: 53px;
+  padding: 0 20px;
+  border-radius: 9px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.register-next {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  background: var(--color-primary);
+  color: white;
+}
+
+.register-next:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+}
+
+.register-next:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.register-next span {
+  font-size: 1.1rem;
+}
+
+.register-back {
+  border: 1px solid var(--color-border);
+  background: white;
+  color: var(--color-charcoal);
+}
+
+.register-back:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Connexion et sécurité */
+
+.register-login {
+  margin-top: 27px;
+  color: var(--color-muted);
+  font-size: 0.79rem;
+  text-align: center;
+}
+
+.register-login a {
+  margin-left: 5px;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.register-login a:hover {
+  text-decoration: underline;
+}
+
+.register-security-note {
+  margin-top: 28px;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+/* Tablettes */
+
+@media (max-width: 950px) {
+  .register-page {
+    grid-template-columns: 0.75fr 1.25fr;
+  }
+
+  .register-visual {
+    padding: 35px 8%;
+  }
+
+  .register-form-section {
+    padding: 45px 7%;
+  }
+
+  .register-interests {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobiles */
+
+@media (max-width: 650px) {
+  .register-page {
+    display: block;
+  }
+
+  .register-visual {
+    display: none;
+  }
+
+  .register-form-section {
+    min-height: 100vh;
+    padding: 30px 6%;
+  }
+
+  .register-form-container {
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  .register-mobile-brand {
+    display: inline-flex;
+    margin-bottom: 45px;
+    color: var(--color-primary);
+  }
+
+  .register-heading h2 {
+    font-size: 2.15rem;
+  }
+
+  .register-step-content {
+    gap: 19px;
+  }
+}
+
+@media (max-width: 380px) {
+  .register-step-labels {
+    font-size: 0.61rem;
+  }
+
+  .register-interests {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .register-actions {
+    gap: 8px;
+  }
+
+  .register-next,
+  .register-back {
+    padding: 0 13px;
+    font-size: 0.78rem;
+  }
+}

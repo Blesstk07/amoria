@@ -8,6 +8,9 @@ import Security from './components/layout/Security'
 import Premium from './components/layout/Premium'
 import Footer from './components/layout/Footer'
 
+import Login from './pages/Login'
+import Register from './pages/Register'
+
 import './App.css'
 
 function Home() {
@@ -25,14 +28,6 @@ function Home() {
       <Footer />
     </>
   )
-}
-
-function Login() {
-  return <h1>Page de connexion Amoria</h1>
-}
-
-function Register() {
-  return <h1>Page d'inscription Amoria</h1>
 }
 
 function App() {
