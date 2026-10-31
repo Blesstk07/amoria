@@ -1,0 +1,95 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+:root {
+  font-family: 'Inter', sans-serif;
+  color: #292329;
+  background: #FFF8F4;
+
+  --color-primary: #8D304F;
+  --color-primary-dark: #70243D;
+  --color-rose: #E8A9B9;
+  --color-ivory: #FFF8F4;
+  --color-charcoal: #292329;
+  --color-white: #FFFFFF;
+  --color-muted: #766B70;
+  --color-border: #F0DFE3;
+
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Inter', sans-serif;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+body,
+button,
+input,
+textarea {
+  font-family: var(--font-body);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--color-rose);
+  outline-offset: 4px;
+}
+
+::selection {
+  background: var(--color-rose);
+  color: var(--color-charcoal);
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
