@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Services/EmailService.php';
 
 class AuthController
 {
@@ -27,6 +28,21 @@ class AuthController
     }
 
     /**
+     * Lire un champ texte du JSON reçu.
+     * Renvoie '' si le champ est absent ou n'est pas une chaîne.
+     */
+    private static function readString(array $input, string $key, bool $trim = true): string
+    {
+        $value = $input[$key] ?? '';
+
+        if (!is_string($value)) {
+            return '';
+        }
+
+        return $trim ? trim($value) : $value;
+    }
+
+    /**
      * Calculer l'âge à partir d'une date de naissance.
      */
     private static function calculateAge(string $dateOfBirth): int
@@ -47,7 +63,7 @@ class AuthController
         try {
             // 1. Récupérer les données JSON envoyées par React.
             $input = json_decode(
-                file_get_contents('php://input'),
+                (string) file_get_contents('php://input'),
                 true
             );
 
@@ -56,16 +72,16 @@ class AuthController
             }
 
             // 2. Récupérer et nettoyer les champs.
-            $email = strtolower(trim((string) ($input['email'] ?? '')));
-            $password = (string) ($input['password'] ?? '');
-            $pseudonym = trim((string) ($input['pseudonym'] ?? ''));
-            $dateOfBirth = trim((string) ($input['dateOfBirth'] ?? ''));
-            $gender = strtoupper(trim((string) ($input['gender'] ?? '')));
-            $country = trim((string) ($input['country'] ?? ''));
-            $city = trim((string) ($input['city'] ?? ''));
-            $biography = trim((string) ($input['bio'] ?? ''));
+            $email = strtolower(self::readString($input, 'email'));
+            $password = self::readString($input, 'password', false); // jamais de trim sur un mot de passe
+            $pseudonym = self::readString($input, 'pseudonym');
+            $dateOfBirth = self::readString($input, 'dateOfBirth');
+            $gender = strtoupper(self::readString($input, 'gender'));
+            $country = self::readString($input, 'country');
+            $city = self::readString($input, 'city');
+            $biography = self::readString($input, 'bio');
 
-            $interests = $input['interests'] ?? [];
+            $rawInterests = $input['interests'] ?? [];
 
             // 3. Vérifier les champs obligatoires.
             if (
@@ -85,9 +101,13 @@ class AuthController
                 self::respond(422, false, 'Adresse e-mail invalide.');
             }
 
-            // 5. Vérifier le mot de passe.
+            // 5. Vérifier le mot de passe (bcrypt ignore tout après 72 octets).
             if (strlen($password) < 8) {
                 self::respond(422, false, 'Le mot de passe doit contenir au moins 8 caractères.');
+            }
+
+            if (strlen($password) > 72) {
+                self::respond(422, false, 'Le mot de passe ne doit pas dépasser 72 caractères.');
             }
 
             // 6. Vérifier le pseudonyme.
@@ -110,6 +130,11 @@ class AuthController
                 $birthDateObject->format('Y-m-d') !== $dateOfBirth
             ) {
                 self::respond(422, false, 'Date de naissance invalide.');
+            }
+
+            // Une date dans le futur donnerait un âge "valide" avec diff()->y.
+            if ($birthDateObject > new DateTimeImmutable('today')) {
+                self::respond(422, false, 'La date de naissance ne peut pas être dans le futur.');
             }
 
             $age = self::calculateAge($dateOfBirth);
@@ -137,11 +162,7 @@ class AuthController
             ];
 
             if (!isset($countryCodes[$normalizedCountry])) {
-                self::respond(
-                    422,
-                    false,
-                    'Pays non pris en charge pour le moment.'
-                );
+                self::respond(422, false, 'Pays non pris en charge pour le moment.');
             }
 
             $countryCode = $countryCodes[$normalizedCountry];
@@ -152,18 +173,25 @@ class AuthController
             }
 
             // 11. Vérifier les centres d'intérêt.
-            if (!is_array($interests) || count($interests) === 0) {
+            if (!is_array($rawInterests) || count($rawInterests) === 0) {
                 self::respond(422, false, 'Sélectionnez au moins un centre d’intérêt.');
             }
 
-            $interests = array_values(array_unique(array_filter(
-                $interests,
-                fn ($interest) => is_string($interest) && trim($interest) !== ''
-            )));
-
-            if (count($interests) === 0 || count($interests) !== count($input['interests'])) {
-                self::respond(422, false, 'La liste des centres d’intérêt est invalide.');
+            if (count($rawInterests) > 20) {
+                self::respond(422, false, 'Vous ne pouvez pas choisir plus de 20 centres d’intérêt.');
             }
+
+            $interests = [];
+
+            foreach ($rawInterests as $interest) {
+                if (!is_string($interest) || trim($interest) === '') {
+                    self::respond(422, false, 'La liste des centres d’intérêt est invalide.');
+                }
+
+                $interests[] = trim($interest);
+            }
+
+            $interests = array_values(array_unique($interests));
 
             // 12. Vérifier les consentements.
             if (
@@ -229,15 +257,11 @@ class AuthController
                 self::respond(500, false, 'Le rôle utilisateur est introuvable.');
             }
 
-            // 18. Commencer la transaction.
-            $connection->beginTransaction();
-
-            // 19. Hacher le mot de passe.
+            // 18. Hacher le mot de passe (avant la transaction pour la garder courte).
             $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-            if ($passwordHash === false) {
-                throw new RuntimeException('Impossible de sécuriser le mot de passe.');
-            }
+            // 19. Commencer la transaction.
+            $connection->beginTransaction();
 
             // 20. Créer le compte utilisateur.
             $userQuery = $connection->prepare(
@@ -307,6 +331,7 @@ class AuthController
             }
 
             // 23. Générer un jeton de vérification.
+            // Le jeton en clair part par e-mail, seul son hash est stocké en base.
             $verificationToken = bin2hex(random_bytes(32));
             $tokenHash = hash('sha256', $verificationToken);
 
@@ -335,17 +360,58 @@ class AuthController
             // 24. Valider toutes les opérations.
             $connection->commit();
 
+            // 25. Envoyer l'e-mail de vérification.
+            $emailSent = false;
+
+            try {
+                // Logs de debug avant l'envoi.
+                error_log("INSCRIPTION EMAIL DESTINATAIRE : " . $email);
+                error_log("INSCRIPTION EMAIL PSEUDONYME : " . $pseudonym);
+
+                EmailService::sendVerificationEmail(
+                    $email,
+                    $pseudonym,
+                    $verificationToken
+                );
+
+                // Atteint uniquement si l'envoi n'a pas levé d'exception.
+                error_log("INSCRIPTION EMAIL : envoi SMTP terminé.");
+
+                $emailSent = true;
+            } catch (Throwable $mailError) {
+                // Le compte existe déjà : ne surtout pas annuler l'inscription.
+                error_log(
+                    'Erreur d’envoi de l’e-mail de vérification Amoria : '
+                    . $mailError->getMessage()
+                );
+            }
+
+            // 26. Répondre au frontend.
+            if ($emailSent) {
+                self::respond(
+                    201,
+                    true,
+                    'Votre compte a été créé ! Un e-mail de vérification vient de vous être envoyé.',
+                    [
+                        'userId' => $userId,
+                        'pseudonym' => $pseudonym,
+                        'emailVerified' => false,
+                        'emailSent' => true
+                    ]
+                );
+            }
+
             self::respond(
                 201,
                 true,
-                'Votre compte a été créé. La vérification de votre adresse e-mail sera bientôt disponible.',
+                'Votre compte a été créé, mais l’envoi de l’e-mail a échoué. Vous pourrez demander un nouvel envoi.',
                 [
                     'userId' => $userId,
                     'pseudonym' => $pseudonym,
-                    'emailVerified' => false
+                    'emailVerified' => false,
+                    'emailSent' => false
                 ]
             );
-
         } catch (PDOException $e) {
             if ($connection instanceof PDO && $connection->inTransaction()) {
                 $connection->rollBack();
@@ -353,7 +419,11 @@ class AuthController
 
             error_log('Erreur SQL lors de l’inscription Amoria : ' . $e->getMessage());
 
-            if ($e->getCode() === '23000') {
+            // 23000 = violation d'intégrité ; 1062 = doublon (clé unique).
+            $isDuplicate = $e->getCode() === '23000'
+                && (int) ($e->errorInfo[1] ?? 0) === 1062;
+
+            if ($isDuplicate) {
                 self::respond(
                     409,
                     false,
@@ -362,7 +432,6 @@ class AuthController
             }
 
             self::respond(500, false, 'Une erreur est survenue lors de la création du compte.');
-
         } catch (Throwable $e) {
             if ($connection instanceof PDO && $connection->inTransaction()) {
                 $connection->rollBack();
@@ -373,4 +442,131 @@ class AuthController
             self::respond(500, false, 'Une erreur interne est survenue.');
         }
     }
+    
+public static function verifyEmail(): void
+{
+    // 1. Récupérer les données envoyées par React.
+    $data = json_decode(file_get_contents('php://input'), true);
+
+    if (!is_array($data)) {
+        self::respond(
+            400,
+            false,
+            'Requête invalide.'
+        );
+    }
+
+    $token = trim($data['token'] ?? '');
+
+    // 2. Vérifier le format du token.
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        self::respond(
+            400,
+            false,
+            'Le lien de vérification est invalide.'
+        );
+    }
+
+    // 3. Hacher le token pour retrouver sa version en base.
+    $tokenHash = hash('sha256', $token);
+
+    $connection = Database::getConnection();
+
+    try {
+        $connection->beginTransaction();
+
+        // 4. Rechercher un token encore valide.
+        $query = $connection->prepare("
+            SELECT id, user_id, target_email
+            FROM email_verification_tokens
+            WHERE token_hash = :token_hash
+              AND purpose = 'SIGNUP'
+              AND used_at IS NULL
+              AND invalidated_at IS NULL
+              AND expires_at > NOW()
+            LIMIT 1
+            FOR UPDATE
+        ");
+
+        $query->execute([
+            'token_hash' => $tokenHash
+        ]);
+
+        $tokenRecord = $query->fetch();
+
+        if (!$tokenRecord) {
+            $connection->rollBack();
+
+            self::respond(
+                400,
+                false,
+                'Ce lien est invalide, expiré ou déjà utilisé.'
+            );
+        }
+
+        // 5. Vérifier que l'adresse correspond toujours au compte.
+        $updateUser = $connection->prepare("
+            UPDATE users
+            SET email_verified_at = NOW()
+            WHERE id = :user_id
+              AND email = :target_email
+              AND email_verified_at IS NULL
+        ");
+
+        $updateUser->execute([
+            'user_id' => $tokenRecord['user_id'],
+            'target_email' => $tokenRecord['target_email']
+        ]);
+
+        if ($updateUser->rowCount() !== 1) {
+            $connection->rollBack();
+
+            self::respond(
+                400,
+                false,
+                'Impossible de vérifier cette adresse e-mail.'
+            );
+        }
+
+        // 6. Marquer le token comme utilisé.
+        $updateToken = $connection->prepare("
+            UPDATE email_verification_tokens
+            SET used_at = NOW()
+            WHERE id = :token_id
+        ");
+
+        $updateToken->execute([
+            'token_id' => $tokenRecord['id']
+        ]);
+
+        // 7. Valider les modifications.
+        $connection->commit();
+
+        self::respond(
+            200,
+            true,
+            'Ton adresse e-mail a été vérifiée avec succès !',
+            [
+                'emailVerified' => true
+            ]
+        );
+
+    } catch (Throwable $e) {
+
+        if ($connection->inTransaction()) {
+            $connection->rollBack();
+        }
+
+        error_log(
+            'Erreur de vérification Amoria : ' . $e->getMessage()
+        );
+
+        self::respond(
+            500,
+            false,
+            'Une erreur est survenue lors de la vérification.'
+        );
+    }
+}
+
 }

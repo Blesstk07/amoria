@@ -7,6 +7,7 @@ import Concept from './components/layout/Concept'
 import Security from './components/layout/Security'
 import Premium from './components/layout/Premium'
 import Footer from './components/layout/Footer'
+import VerifyEmail from './pages/VerifyEmail'
 
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -36,6 +37,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/register" element={<Register />} />
       </Routes>
     </BrowserRouter>
