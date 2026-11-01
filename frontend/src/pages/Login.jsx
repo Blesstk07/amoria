@@ -1,20 +1,62 @@
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { LoaderCircle } from 'lucide-react'
 import './Login.css'
 
 function Login() {
+  const navigate = useNavigate()
+
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
+  const [status, setStatus] = useState('idle')
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
-    setMessage(
-      "L'interface est prête. La connexion sera activée après le raccordement à notre API."
-    )
+    if (status === 'loading') return
+
+    setStatus('loading')
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        setStatus('error')
+        setMessage(
+          result.message || 'Impossible de se connecter. Vérifie tes identifiants.'
+        )
+        return
+      }
+
+    setStatus('success')
+setMessage(result.message || 'Connexion réussie !')
+
+// Test : rechargement complet de l'application.
+navigate('/dashboard', { replace: true })
+    } catch (error) {
+      console.error('Erreur de connexion :', error)
+
+      setStatus('error')
+      setMessage(
+        'Impossible de contacter le serveur. Vérifie ta connexion et réessaie.'
+      )
+    }
   }
 
   return (
@@ -82,7 +124,9 @@ function Login() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="email"
+                maxLength={254}
                 required
+                disabled={status === 'loading'}
               />
             </div>
 
@@ -104,6 +148,7 @@ function Login() {
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="current-password"
                   required
+                  disabled={status === 'loading'}
                 />
 
                 <button
@@ -122,14 +167,31 @@ function Login() {
             </div>
 
             {message && (
-              <p className="login-feedback" role="status">
+              <p
+                className="login-feedback"
+                role="status"
+                aria-live="polite"
+              >
                 {message}
               </p>
             )}
 
-            <button type="submit" className="login-submit">
-              Se connecter
-              <span>→</span>
+            <button
+              type="submit"
+              className="login-submit"
+              disabled={status === 'loading'}
+            >
+              {status === 'loading' ? (
+                <>
+                  <LoaderCircle size={19} className="login-spinner" />
+                  Connexion en cours...
+                </>
+              ) : (
+                <>
+                  Connexion
+                  <span>→</span>
+                </>
+              )}
             </button>
 
           </form>

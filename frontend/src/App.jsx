@@ -7,10 +7,13 @@ import Concept from './components/layout/Concept'
 import Security from './components/layout/Security'
 import Premium from './components/layout/Premium'
 import Footer from './components/layout/Footer'
-import VerifyEmail from './pages/VerifyEmail'
 
 import Login from './pages/Login'
 import Register from './pages/Register'
+import VerifyEmail from './pages/VerifyEmail'
+import ForgotPassword from './pages/ForgotPassword'
+import Dashboard from './pages/Dashboard'
+import ResetPassword from './pages/ResetPassword'
 
 import './App.css'
 
@@ -18,14 +21,12 @@ function Home() {
   return (
     <>
       <Navbar />
-
       <main>
         <Hero />
         <Concept />
         <Security />
         <Premium />
       </main>
-
       <Footer />
     </>
   )
@@ -37,8 +38,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </BrowserRouter>
   )

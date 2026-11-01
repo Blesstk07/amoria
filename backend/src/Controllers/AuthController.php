@@ -442,129 +442,637 @@ class AuthController
             self::respond(500, false, 'Une erreur interne est survenue.');
         }
     }
+
+    /**
+     * Connecter un utilisateur existant.
+     */
+    public static function login(): void
+    {
+        try {
+            // 1. Récupérer les données JSON.
+            $input = json_decode(
+                (string) file_get_contents('php://input'),
+                true
+            );
+
+            if (!is_array($input)) {
+                self::respond(400, false, 'Les données envoyées sont invalides.');
+            }
+
+            // 2. Récupérer les identifiants.
+            $email = strtolower(self::readString($input, 'email'));
+            $password = self::readString($input, 'password', false);
+
+            // 3. Vérifier les champs.
+            if (
+                $email === '' ||
+                $password === '' ||
+                strlen($password) > 1024
+            ) {
+                self::respond(422, false, 'Veuillez fournir votre adresse e-mail et votre mot de passe.');
+            }
+
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                self::respond(422, false, 'Adresse e-mail invalide.');
+            }
+
+            // 4. Récupérer le compte et son profil.
+            $connection = Database::getConnection();
+
+            $query = $connection->prepare("
+                SELECT
+                    u.id,
+                    u.email,
+                    u.password_hash,
+                    u.email_verified_at,
+                    u.account_status,
+                    u.deletion_status,
+                    u.role_id,
+                    p.pseudonym
+                FROM users u
+                LEFT JOIN profiles p ON p.user_id = u.id
+                WHERE u.email = :email
+                LIMIT 1
+            ");
+
+            $query->execute([
+                'email' => $email
+            ]);
+
+            $user = $query->fetch();
+
+            // 5. Vérifier les identifiants.
+            if (!$user || !password_verify($password, $user['password_hash'])) {
+                self::respond(
+                    401,
+                    false,
+                    'Adresse e-mail ou mot de passe incorrect.'
+                );
+            }
+
+            // 6. Vérifier que l'adresse e-mail est confirmée.
+            if ($user['email_verified_at'] === null) {
+                self::respond(
+                    403,
+                    false,
+                    'Veuillez vérifier votre adresse e-mail avant de vous connecter.'
+                );
+            }
+
+            // 7. Vérifier l'état du compte.
+            if (
+                $user['account_status'] !== 'ACTIVE' ||
+                $user['deletion_status'] !== 'NONE'
+            ) {
+                self::respond(
+                    403,
+                    false,
+                    'Ce compte est actuellement indisponible.'
+                );
+            }
+
+            // 8. Vérifier que la session est bien initialisée.
+            if (session_status() !== PHP_SESSION_ACTIVE) {
+                self::respond(
+                    500,
+                    false,
+                    'Impossible d’initialiser la session.'
+                );
+            }
+
+            // 9. Régénérer l'identifiant pour prévenir
+            // les attaques par fixation de session.
+            if (!session_regenerate_id(true)) {
+                self::respond(
+                    500,
+                    false,
+                    'Impossible de sécuriser la session.'
+                );
+            }
+
+            // 10. Enregistrer les informations en session.
+            $_SESSION = [
+                'user_id' => (int) $user['id'],
+                'role_id' => (int) $user['role_id'],
+                'authenticated_at' => time()
+            ];
+
+            // 11. Répondre au frontend.
+            self::respond(
+                200,
+                true,
+                'Connexion réussie.',
+                [
+                    'user' => [
+                        'id' => (int) $user['id'],
+                        'email' => $user['email'],
+                        'pseudonym' => $user['pseudonym'],
+                        'roleId' => (int) $user['role_id']
+                    ]
+                ]
+            );
+        } catch (PDOException $e) {
+            error_log(
+                'Erreur SQL lors de la connexion Amoria : ' . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Une erreur est survenue lors de la connexion.'
+            );
+        } catch (Throwable $e) {
+            error_log(
+                'Erreur lors de la connexion Amoria : ' . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Une erreur interne est survenue.'
+            );
+        }
+    }
+
+    /**
+     * Vérifier l'adresse e-mail à partir du jeton reçu par e-mail.
+     */
+    public static function verifyEmail(): void
+    {
+        // 1. Récupérer les données envoyées par React.
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        if (!is_array($data)) {
+            self::respond(
+                400,
+                false,
+                'Requête invalide.'
+            );
+        }
+
+        $token = trim($data['token'] ?? '');
+
+        // 2. Vérifier le format du token.
+        if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+            self::respond(
+                400,
+                false,
+                'Le lien de vérification est invalide.'
+            );
+        }
+
+        // 3. Hacher le token pour retrouver sa version en base.
+        $tokenHash = hash('sha256', $token);
+
+        $connection = Database::getConnection();
+
+        try {
+            $connection->beginTransaction();
+
+            // 4. Rechercher un token encore valide.
+            $query = $connection->prepare("
+                SELECT id, user_id, target_email
+                FROM email_verification_tokens
+                WHERE token_hash = :token_hash
+                  AND purpose = 'SIGNUP'
+                  AND used_at IS NULL
+                  AND invalidated_at IS NULL
+                  AND expires_at > NOW()
+                LIMIT 1
+                FOR UPDATE
+            ");
+
+            $query->execute([
+                'token_hash' => $tokenHash
+            ]);
+
+            $tokenRecord = $query->fetch();
+
+            if (!$tokenRecord) {
+                $connection->rollBack();
+
+                self::respond(
+                    400,
+                    false,
+                    'Ce lien est invalide, expiré ou déjà utilisé.'
+                );
+            }
+
+            // 5. Vérifier que l'adresse correspond toujours au compte.
+            $updateUser = $connection->prepare("
+                UPDATE users
+                SET email_verified_at = NOW()
+                WHERE id = :user_id
+                  AND email = :target_email
+                  AND email_verified_at IS NULL
+            ");
+
+            $updateUser->execute([
+                'user_id' => $tokenRecord['user_id'],
+                'target_email' => $tokenRecord['target_email']
+            ]);
+
+            if ($updateUser->rowCount() !== 1) {
+                $connection->rollBack();
+
+                self::respond(
+                    400,
+                    false,
+                    'Impossible de vérifier cette adresse e-mail.'
+                );
+            }
+
+            // 6. Marquer le token comme utilisé.
+            $updateToken = $connection->prepare("
+                UPDATE email_verification_tokens
+                SET used_at = NOW()
+                WHERE id = :token_id
+            ");
+
+            $updateToken->execute([
+                'token_id' => $tokenRecord['id']
+            ]);
+
+            // 7. Valider les modifications.
+            $connection->commit();
+
+            self::respond(
+                200,
+                true,
+                'Ton adresse e-mail a été vérifiée avec succès !',
+                [
+                    'emailVerified' => true
+                ]
+            );
+        } catch (Throwable $e) {
+            if ($connection->inTransaction()) {
+                $connection->rollBack();
+            }
+
+            error_log(
+                'Erreur de vérification Amoria : ' . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Une erreur est survenue lors de la vérification.'
+            );
+        }
+    }
+
     
-public static function verifyEmail(): void
+/**
+ * Demander la réinitialisation du mot de passe.
+ */
+public static function forgotPassword(): void
 {
-    // 1. Récupérer les données envoyées par React.
-    $data = json_decode(file_get_contents('php://input'), true);
-
-    if (!is_array($data)) {
-        self::respond(
-            400,
-            false,
-            'Requête invalide.'
-        );
-    }
-
-    $token = trim($data['token'] ?? '');
-
-    // 2. Vérifier le format du token.
-    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
-        self::respond(
-            400,
-            false,
-            'Le lien de vérification est invalide.'
-        );
-    }
-
-    // 3. Hacher le token pour retrouver sa version en base.
-    $tokenHash = hash('sha256', $token);
-
-    $connection = Database::getConnection();
+    $genericMessage = 'Si cette adresse correspond à un compte actif et vérifié, un e-mail de réinitialisation sera envoyé.';
 
     try {
+        $input = json_decode(
+            (string) file_get_contents('php://input'),
+            true
+        );
+
+        if (!is_array($input)) {
+            self::respond(
+                400,
+                false,
+                'Les données envoyées sont invalides.'
+            );
+        }
+
+        $email = strtolower(self::readString($input, 'email'));
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            self::respond(
+                422,
+                false,
+                'Adresse e-mail invalide.'
+            );
+        }
+
+        $connection = Database::getConnection();
+
         $connection->beginTransaction();
 
-        // 4. Rechercher un token encore valide.
+        // Rechercher uniquement les comptes actifs et vérifiés.
         $query = $connection->prepare("
-            SELECT id, user_id, target_email
-            FROM email_verification_tokens
-            WHERE token_hash = :token_hash
-              AND purpose = 'SIGNUP'
-              AND used_at IS NULL
-              AND invalidated_at IS NULL
-              AND expires_at > NOW()
+            SELECT
+                u.id,
+                p.pseudonym
+            FROM users u
+            INNER JOIN profiles p ON p.user_id = u.id
+            WHERE u.email = :email
+              AND u.email_verified_at IS NOT NULL
+              AND u.account_status = 'ACTIVE'
+              AND u.deletion_status = 'NONE'
             LIMIT 1
             FOR UPDATE
         ");
 
-        $query->execute([
+        $query->execute(['email' => $email]);
+        $user = $query->fetch();
+
+        // Même réponse, que le compte existe ou non.
+        if (!$user) {
+            $connection->commit();
+
+            self::respond(200, true, $genericMessage);
+        }
+
+        // Invalider les anciens tokens encore utilisables.
+        $invalidate = $connection->prepare("
+            UPDATE password_reset_tokens
+            SET invalidated_at = NOW()
+            WHERE user_id = :user_id
+              AND used_at IS NULL
+              AND invalidated_at IS NULL
+        ");
+
+        $invalidate->execute([
+            'user_id' => $user['id']
+        ]);
+
+        // Générer un token aléatoire de 64 caractères hexadécimaux.
+        $token = bin2hex(random_bytes(32));
+
+        // Stocker uniquement son hash SHA-256.
+        $tokenHash = hash('sha256', $token);
+
+        $insert = $connection->prepare("
+            INSERT INTO password_reset_tokens (
+                user_id,
+                token_hash,
+                expires_at
+            )
+            VALUES (
+                :user_id,
+                :token_hash,
+                DATE_ADD(NOW(), INTERVAL 30 MINUTE)
+            )
+        ");
+
+        $insert->execute([
+            'user_id' => $user['id'],
             'token_hash' => $tokenHash
         ]);
 
-        $tokenRecord = $query->fetch();
-
-        if (!$tokenRecord) {
-            $connection->rollBack();
-
-            self::respond(
-                400,
-                false,
-                'Ce lien est invalide, expiré ou déjà utilisé.'
-            );
-        }
-
-        // 5. Vérifier que l'adresse correspond toujours au compte.
-        $updateUser = $connection->prepare("
-            UPDATE users
-            SET email_verified_at = NOW()
-            WHERE id = :user_id
-              AND email = :target_email
-              AND email_verified_at IS NULL
-        ");
-
-        $updateUser->execute([
-            'user_id' => $tokenRecord['user_id'],
-            'target_email' => $tokenRecord['target_email']
-        ]);
-
-        if ($updateUser->rowCount() !== 1) {
-            $connection->rollBack();
-
-            self::respond(
-                400,
-                false,
-                'Impossible de vérifier cette adresse e-mail.'
-            );
-        }
-
-        // 6. Marquer le token comme utilisé.
-        $updateToken = $connection->prepare("
-            UPDATE email_verification_tokens
-            SET used_at = NOW()
-            WHERE id = :token_id
-        ");
-
-        $updateToken->execute([
-            'token_id' => $tokenRecord['id']
-        ]);
-
-        // 7. Valider les modifications.
         $connection->commit();
 
-        self::respond(
-            200,
-            true,
-            'Ton adresse e-mail a été vérifiée avec succès !',
-            [
-                'emailVerified' => true
-            ]
-        );
+        // Envoyer le lien de réinitialisation.
+        try {
+            EmailService::sendPasswordResetEmail(
+                $email,
+                $user['pseudonym'],
+                $token
+            );
+        } catch (Throwable $mailError) {
+            error_log(
+                'Erreur d’envoi du mail de réinitialisation Amoria : '
+                . $mailError->getMessage()
+            );
 
-    } catch (Throwable $e) {
+            // Invalider le token si l'e-mail n'a pas pu être envoyé.
+            $invalidateFailedToken = $connection->prepare("
+                UPDATE password_reset_tokens
+                SET invalidated_at = NOW()
+                WHERE token_hash = :token_hash
+            ");
 
-        if ($connection->inTransaction()) {
+            $invalidateFailedToken->execute([
+                'token_hash' => $tokenHash
+            ]);
+        }
+
+        self::respond(200, true, $genericMessage);
+
+    } catch (PDOException $e) {
+        if (
+            isset($connection) &&
+            $connection->inTransaction()
+        ) {
             $connection->rollBack();
         }
 
         error_log(
-            'Erreur de vérification Amoria : ' . $e->getMessage()
+            'Erreur SQL forgotPassword Amoria : '
+            . $e->getMessage()
         );
 
         self::respond(
             500,
             false,
-            'Une erreur est survenue lors de la vérification.'
+            'Une erreur interne est survenue.'
+        );
+
+    } catch (Throwable $e) {
+        if (
+            isset($connection) &&
+            $connection->inTransaction()
+        ) {
+            $connection->rollBack();
+        }
+
+        error_log(
+            'Erreur forgotPassword Amoria : '
+            . $e->getMessage()
+        );
+
+        self::respond(
+            500,
+            false,
+            'Une erreur interne est survenue.'
+        );
+    }
+}
+
+/**
+ * Réinitialiser le mot de passe avec un token valide.
+ */
+public static function resetPassword(): void
+{
+    try {
+        $input = json_decode(
+            (string) file_get_contents('php://input'),
+            true
+        );
+
+        if (!is_array($input)) {
+            self::respond(
+                400,
+                false,
+                'Les données envoyées sont invalides.'
+            );
+        }
+
+        $token = self::readString($input, 'token');
+        $password = self::readString($input, 'password', false);
+        $passwordConfirmation = self::readString(
+            $input,
+            'passwordConfirmation',
+            false
+        );
+
+        // Vérifier le format du token.
+        if (!preg_match('/^[a-f0-9]{64}$/i', $token)) {
+            self::respond(
+                422,
+                false,
+                'Le lien de réinitialisation est invalide ou expiré.'
+            );
+        }
+
+        // Vérifier le nouveau mot de passe.
+        if (strlen($password) < 8 || strlen($password) > 72) {
+            self::respond(
+                422,
+                false,
+                'Le mot de passe doit contenir entre 8 et 72 octets.'
+            );
+        }
+
+        if ($password !== $passwordConfirmation) {
+            self::respond(
+                422,
+                false,
+                'Les mots de passe ne correspondent pas.'
+            );
+        }
+
+        $connection = Database::getConnection();
+
+        $connection->beginTransaction();
+
+        // Rechercher et verrouiller le token.
+        $query = $connection->prepare("
+            SELECT
+                t.id,
+                t.user_id
+            FROM password_reset_tokens t
+            INNER JOIN users u ON u.id = t.user_id
+            WHERE t.token_hash = :token_hash
+              AND t.used_at IS NULL
+              AND t.invalidated_at IS NULL
+              AND t.expires_at > NOW()
+              AND u.account_status = 'ACTIVE'
+              AND u.deletion_status = 'NONE'
+            LIMIT 1
+            FOR UPDATE
+        ");
+
+        $query->execute([
+            'token_hash' => hash('sha256', $token)
+        ]);
+
+        $resetToken = $query->fetch();
+
+        if (!$resetToken) {
+            $connection->rollBack();
+
+            self::respond(
+                400,
+                false,
+                'Le lien de réinitialisation est invalide ou expiré.'
+            );
+        }
+
+        // Générer le nouveau hash du mot de passe.
+        $passwordHash = password_hash(
+            $password,
+            PASSWORD_DEFAULT
+        );
+
+        if ($passwordHash === false) {
+            throw new RuntimeException(
+                'Impossible de sécuriser le nouveau mot de passe.'
+            );
+        }
+
+        // Mettre à jour le mot de passe du compte.
+        $updatePassword = $connection->prepare("
+            UPDATE users
+            SET password_hash = :password_hash,
+                updated_at = NOW()
+            WHERE id = :user_id
+        ");
+
+        $updatePassword->execute([
+            'password_hash' => $passwordHash,
+            'user_id' => $resetToken['user_id']
+        ]);
+
+        // Marquer le token utilisé.
+        $markUsed = $connection->prepare("
+            UPDATE password_reset_tokens
+            SET used_at = NOW()
+            WHERE id = :token_id
+        ");
+
+        $markUsed->execute([
+            'token_id' => $resetToken['id']
+        ]);
+
+        // Invalider les autres tokens du même compte.
+        $invalidateOthers = $connection->prepare("
+            UPDATE password_reset_tokens
+            SET invalidated_at = NOW()
+            WHERE user_id = :user_id
+              AND id != :token_id
+              AND used_at IS NULL
+              AND invalidated_at IS NULL
+        ");
+
+        $invalidateOthers->execute([
+            'user_id' => $resetToken['user_id'],
+            'token_id' => $resetToken['id']
+        ]);
+
+        $connection->commit();
+
+        self::respond(
+            200,
+            true,
+            'Ton mot de passe a été réinitialisé avec succès.'
+        );
+
+    } catch (PDOException $e) {
+        if (
+            isset($connection) &&
+            $connection->inTransaction()
+        ) {
+            $connection->rollBack();
+        }
+
+        error_log(
+            'Erreur SQL resetPassword Amoria : '
+            . $e->getMessage()
+        );
+
+        self::respond(
+            500,
+            false,
+            'Une erreur interne est survenue.'
+        );
+
+    } catch (Throwable $e) {
+        if (
+            isset($connection) &&
+            $connection->inTransaction()
+        ) {
+            $connection->rollBack();
+        }
+
+        error_log(
+            'Erreur resetPassword Amoria : '
+            . $e->getMessage()
+        );
+
+        self::respond(
+            500,
+            false,
+            'Une erreur interne est survenue.'
         );
     }
 }

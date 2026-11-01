@@ -168,7 +168,15 @@ function Register() {
         return
       }
 
-      setMessage(result.message)
+      if (result.data?.emailSent === false) {
+        setMessage(
+          'Votre compte a été créé, mais le mail de vérification n’a pas pu être envoyé. Contactez notre assistance.'
+        )
+      } else {
+        setMessage(
+          result.message || 'Votre compte a été créé. Consultez votre boîte mail pour vérifier votre adresse.'
+        )
+      }
     } catch (err) {
       console.error('Erreur lors de l’inscription :', err)
 

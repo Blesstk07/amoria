@@ -6,38 +6,37 @@ require_once __DIR__ . '/../Controllers/AuthController.php';
 
 return function (Router $router): void {
 
+    // Appelle AuthController::$method s'il existe et est appelable,
+    // sinon répond 501 (route branchée mais pas encore codée).
+    $action = static function (string $method): callable {
+        return static function () use ($method): void {
+            if (!is_callable([AuthController::class, $method])) {
+                http_response_code(501);
+
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Cette fonctionnalité n’est pas encore disponible.',
+                    'data' => []
+                ], JSON_UNESCAPED_UNICODE);
+
+                return;
+            }
+
+            AuthController::$method();
+        };
+    };
+
     // Inscription
-    $router->post(
-        '/api/auth/register',
-        [AuthController::class, 'register']
-    );
+    $router->post('/api/auth/register', $action('register'));
 
-    // Connexion (à implémenter)
-    $router->post('/api/auth/login', function (): void {
-        http_response_code(501);
-
-        echo json_encode([
-            'success' => false,
-            'message' => 'Connexion pas encore implémentée.',
-            'data' => []
-        ], JSON_UNESCAPED_UNICODE);
-    });
+    // Connexion
+    $router->post('/api/auth/login', $action('login'));
+    // Déconnexion
+$router->post('/api/auth/logout', $action('logout'));
 
     // Vérification de l'adresse e-mail
-    // Si AuthController::verifyEmail n'existe pas encore, on répond 501 proprement.
-    $router->post('/api/auth/verify-email', function (): void {
-        if (!method_exists(AuthController::class, 'verifyEmail')) {
-            http_response_code(501);
+    $router->post('/api/auth/verify-email', $action('verifyEmail'));
 
-            echo json_encode([
-                'success' => false,
-                'message' => 'Vérification de l’e-mail pas encore implémentée.',
-                'data' => []
-            ], JSON_UNESCAPED_UNICODE);
-
-            return;
-        }
-
-        AuthController::verifyEmail();
-    });
+    // Demande de réinitialisation du mot de passe (à écrire)
+    $router->post('/api/auth/forgot-password', $action('forgotPassword'));
 };

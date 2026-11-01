@@ -1,5 +1,6 @@
 
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Heart, Menu, X, ArrowUpRight } from 'lucide-react'
 import './Navbar.css'
 
@@ -12,7 +13,11 @@ function Navbar() {
     <header className="navbar">
       <div className="navbar-container">
 
-        <a href="#accueil" className="navbar-logo" onClick={closeMenu}>
+        <a
+          href="#accueil"
+          className="navbar-logo"
+          onClick={closeMenu}
+        >
           amoria
           <span>
             <Heart size={17} fill="currentColor" />
@@ -20,45 +25,62 @@ function Navbar() {
         </a>
 
         <nav
+          id="main-navigation"
           className={`navbar-links ${menuOpen ? 'active' : ''}`}
           aria-label="Navigation principale"
         >
-          <a href="#accueil" onClick={closeMenu}>Accueil</a>
-          <a href="#concept" onClick={closeMenu}>Notre Concept</a>
-          <a href="#securite" onClick={closeMenu}>Sécurité</a>
-          <a href="#premium" onClick={closeMenu}>Premium</a>
+          <a href="#accueil" onClick={closeMenu}>
+            Accueil
+          </a>
+
+          <a href="#concept" onClick={closeMenu}>
+            Notre Concept
+          </a>
+
+          <a href="#securite" onClick={closeMenu}>
+            Sécurité
+          </a>
+
+          <a href="#premium" onClick={closeMenu}>
+            Premium
+          </a>
 
           <div className="navbar-mobile-actions">
-            <a href="/login" className="navbar-login">
-  Connexion
-</a>
+            <Link
+              to="/login"
+              className="navbar-login"
+              onClick={closeMenu}
+            >
+              Connexion
+            </Link>
 
-            <a href="/register" className="navbar-register" onClick={closeMenu}>
+            <Link
+              to="/register"
+              className="navbar-register"
+              onClick={closeMenu}
+            >
               Créer un compte <ArrowUpRight size={16} />
-            </a>
+            </Link>
           </div>
         </nav>
-        <nav
-  id="main-navigation"
-  className={`navbar-links ${menuOpen ? 'active' : ''}`}
-  aria-label="Navigation principale"
-></nav>
 
         <div className="navbar-actions">
-         <a href="/login" className="navbar-login">
-  Connexion
-</a>
+          <Link to="/login" className="navbar-login">
+            Connexion
+          </Link>
 
-          <a href="/register" className="navbar-register">
+          <Link to="/register" className="navbar-register">
             S'inscrire <ArrowUpRight size={16} />
-          </a>
+          </Link>
         </div>
 
         <button
           type="button"
           className="navbar-menu-button"
           onClick={() => setMenuOpen(!menuOpen)}
-          aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+          aria-label={
+            menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'
+          }
           aria-expanded={menuOpen}
           aria-controls="main-navigation"
         >
