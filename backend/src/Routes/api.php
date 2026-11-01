@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../Controllers/DashboardController.php';
 require_once __DIR__ . '/../Controllers/ProfileController.php';
-require_once __DIR__ . '/../Security/Csrf.php'; // adapte le chemin si besoin
+require_once __DIR__ . '/../Controllers/DiscoveryController.php';
+require_once __DIR__ . '/../Security/Csrf.php';
 
 return function (Router $router): void {
 
@@ -24,12 +25,15 @@ return function (Router $router): void {
 
     // Récupération du jeton CSRF
     $router->get('/api/csrf-token', function (): void {
-        header('Cache-Control: no-store'); // le jeton ne doit jamais être mis en cache
+        header('Cache-Control: no-store');
 
         try {
             $token = Csrf::getToken();
+
         } catch (Throwable $e) {
-            error_log('Erreur jeton CSRF Amoria : ' . $e->getMessage());
+            error_log(
+                'Erreur jeton CSRF Amoria : ' . $e->getMessage()
+            );
 
             http_response_code(500);
 
@@ -58,7 +62,8 @@ return function (Router $router): void {
         DashboardController::class,
         'getDashboard'
     ]);
-        // Gestion du profil membre
+
+    // Gestion du profil membre
     $router->get('/api/profile', [
         ProfileController::class,
         'getProfile'
@@ -72,5 +77,18 @@ return function (Router $router): void {
     $router->put('/api/profile/preferences', [
         ProfileController::class,
         'updatePreferences'
+    ]);
+
+    // Découverte des membres
+    $router->get('/api/discover', [
+        DiscoveryController::class,
+        'discover'
+    ]);
+
+    // Enregistrement d'une consultation
+    // Cette route POST est automatiquement protégée par CSRF.
+    $router->post('/api/discover/view', [
+        DiscoveryController::class,
+        'recordView'
     ]);
 };

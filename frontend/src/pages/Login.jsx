@@ -193,11 +193,7 @@ async function handleSubmit(event) {
             </div>
 
             {message && (
-              <p
-                className="login-feedback"
-                role="status"
-                aria-live="polite"
-              >
+                           <p className="login-feedback" role="alert">
                 {message}
               </p>
             )}

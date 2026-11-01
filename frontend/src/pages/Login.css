@@ -354,7 +354,6 @@
     font-size: 0.68rem;
   }
 }
-
 @media (max-width: 380px) {
   .login-label-row {
     align-items: flex-start;
@@ -364,7 +363,9 @@
   .login-register {
     line-height: 1.8;
   }
-  
+}
+
+/* Ces règles étaient piégées dans le media query : elles s'appliquent maintenant partout */
 .login-submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
@@ -372,13 +373,116 @@
 }
 
 .login-spinner {
-  animation: login-spin 1s linear infinite;
+  animation: ds-spin 1s linear infinite;
+}
+/* ==========================================================
+   Lot 4A : améliorations Login
+   ========================================================== */
+
+.login-page {
+  min-height: 100dvh;
 }
 
-@keyframes login-spin {
-  to {
-    transform: rotate(360deg);
+.login-visual {
+  min-height: 100dvh;
+  background-color: #5b1d35; /* visible si l'image est absente */
+}
+
+/* 16px minimum : évite le zoom automatique sur iPhone */
+.login-field input {
+  font-size: 1rem;
+}
+
+.login-field input:focus {
+  box-shadow: var(--focus-ring);
+  outline: 2px solid transparent;
+}
+
+.login-field label,
+.login-label-row label {
+  font-size: 0.9rem;
+}
+
+.login-label-row a {
+  font-size: 0.82rem;
+}
+
+.login-password-toggle {
+  min-height: 44px;
+  padding: 0 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.login-submit {
+  cursor: pointer;
+}
+
+.login-feedback {
+  border: 1px solid #f3c9ce;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: 0.88rem;
+  animation: ds-fade-up 0.3s var(--ease) both;
+}
+
+.login-form-container {
+  animation: ds-fade-up 0.5s var(--ease) both;
+}
+
+.login-register,
+.login-security {
+  font-size: 0.88rem;
+}
+
+@media (max-width: 650px) {
+  .login-form-section {
+    min-height: 100dvh;
   }
 }
+/* ==========================================================
+   Passe responsive : Login
+   Mise en page « mobile » étendue jusqu'à 820px
+   ========================================================== */
 
+@media (max-width: 820px) {
+  .login-page {
+    display: block;
+  }
+
+  .login-visual {
+    display: none;
+  }
+
+  .login-form-section {
+    min-height: 100vh;
+    min-height: 100dvh;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 35px 7%;
+  }
+
+  .login-form-container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding-top: 0;
+  }
+
+  /* Le logo s'aligne au-dessus du formulaire, au lieu de se placer à côté */
+  .login-mobile-brand {
+    display: flex;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto 40px;
+    color: var(--color-primary);
+  }
+
+  .login-heading {
+    margin-bottom: 35px;
+  }
+
+  .login-heading h2 {
+    font-size: 2.2rem;
+  }
 }

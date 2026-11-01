@@ -161,3 +161,62 @@
     font-size: 29px;
   }
 }
+/* ==========================================================
+   Lot 5A : navbar collante et menu mobile animé
+   ========================================================== */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  background: rgba(255, 248, 244, 0.92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.navbar-links > a,
+.navbar-login,
+.navbar-register {
+  font-size: 14px;
+}
+
+.navbar-links > a:focus-visible,
+.navbar-login:focus-visible,
+.navbar-register:focus-visible,
+.navbar-logo:focus-visible {
+  border-radius: 4px;
+}
+
+@media (max-width: 850px) {
+  /* Le menu reste dans le DOM : on l'anime au lieu de display:none.
+     visibility:hidden le retire aussi de la navigation au clavier. */
+  .navbar-links {
+    display: flex;
+    max-height: calc(100dvh - 72px);
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-8px);
+    transition:
+      opacity 0.25s var(--ease),
+      transform 0.25s var(--ease),
+      visibility 0.25s;
+  }
+
+  .navbar-links.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .navbar-links > a {
+    font-size: 16px;
+  }
+
+  .navbar-menu-button {
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+  }
+}

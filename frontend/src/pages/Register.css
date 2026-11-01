@@ -561,3 +561,151 @@
     font-size: 0.78rem;
   }
 }
+/* ==========================================================
+   Lot 4A : améliorations Register
+   ========================================================== */
+
+.register-page {
+  min-height: 100dvh;
+}
+
+.register-visual {
+  height: 100dvh;
+  background-color: #5b1d35; /* visible si l'image est absente */
+}
+
+/* Champs : 16px minimum (pas de zoom iPhone) + focus visible */
+.register-field input,
+.register-field select,
+.register-field textarea {
+  font-size: 1rem;
+}
+
+.register-field input:focus,
+.register-field select:focus,
+.register-field textarea:focus {
+  box-shadow: var(--focus-ring);
+  outline: 2px solid transparent;
+}
+
+.register-field > label {
+  font-size: 0.9rem;
+}
+
+.register-field small {
+  font-size: 0.78rem;
+}
+
+.register-password-wrapper button {
+  min-height: 44px;
+  padding: 0 6px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+/* Centres d'intérêt */
+.register-interest {
+  min-height: 48px;
+  font-size: 0.85rem;
+}
+
+.register-interest:hover {
+  border-color: var(--color-primary);
+}
+
+.register-interest:focus-within {
+  outline: 3px solid var(--color-rose);
+  outline-offset: 2px;
+}
+
+.register-interest-count {
+  font-size: 0.8rem;
+}
+
+/* Consentements */
+.register-consent {
+  font-size: 0.85rem;
+}
+
+.register-consent input {
+  width: 20px;
+  height: 20px;
+}
+
+/* Boutons : le « Retour à l'accueil » est un <a>, il lui faut un display */
+.register-next,
+.register-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.register-back {
+  gap: 8px;
+}
+
+/* Progression */
+.register-progress-label {
+  font-size: 0.82rem;
+}
+
+.register-step-labels {
+  font-size: 0.74rem;
+}
+
+/* Animations : chaque étape apparaît en douceur */
+.register-step-content {
+  animation: ds-fade-up 0.4s var(--ease) both;
+}
+
+.register-error,
+.register-success {
+  font-size: 0.88rem;
+  animation: ds-fade-up 0.3s var(--ease) both;
+}
+
+@media (max-width: 650px) {
+  .register-form-section {
+    min-height: 100dvh;
+  }
+}
+/* ==========================================================
+   Passe responsive : Register
+   Mise en page « mobile » étendue jusqu'à 820px
+   ========================================================== */
+
+@media (max-width: 820px) {
+  .register-page {
+    display: block;
+  }
+
+  .register-visual {
+    display: none;
+  }
+
+  .register-form-section {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 30px 6%;
+  }
+
+  .register-form-container {
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  .register-mobile-brand {
+    display: inline-flex;
+    margin-bottom: 45px;
+    color: var(--color-primary);
+  }
+
+  .register-heading h2 {
+    font-size: 2.15rem;
+  }
+
+  .register-step-content {
+    gap: 19px;
+  }
+}

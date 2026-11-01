@@ -50,10 +50,35 @@ function ResetPassword() {
     setMessage('')
 
     try {
+          // 1. Récupérer le jeton CSRF
+      const csrfResponse = await fetch('/api/csrf-token', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+        },
+      })
+
+      const csrfResult = await csrfResponse.json().catch(() => null)
+
+      if (
+        !csrfResponse.ok ||
+        !csrfResult?.success ||
+        !csrfResult.data?.csrfToken
+      ) {
+        setStatus('error')
+        setMessage('Impossible de sécuriser la demande. Réessaie.')
+        return
+      }
+
+      // 2. Envoyer le nouveau mot de passe avec le jeton
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-CSRF-Token': csrfResult.data.csrfToken,
         },
         body: JSON.stringify({
           token,

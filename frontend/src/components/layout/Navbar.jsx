@@ -1,5 +1,4 @@
-
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, Menu, X, ArrowUpRight } from 'lucide-react'
 import './Navbar.css'
@@ -8,6 +7,18 @@ function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const closeMenu = () => setMenuOpen(false)
+
+  // Fermeture du menu mobile avec la touche Échap
+  useEffect(() => {
+    if (!menuOpen) return
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [menuOpen])
 
   return (
     <header className="navbar">
@@ -18,7 +29,7 @@ function Navbar() {
           className="navbar-logo"
           onClick={closeMenu}
         >
-          amoria
+          Amoria
           <span>
             <Heart size={17} fill="currentColor" />
           </span>

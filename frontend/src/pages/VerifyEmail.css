@@ -118,3 +118,39 @@
     font-size: 26px;
   }
 }
+/* ==========================================================
+   Lot 4B : améliorations VerifyEmail
+   ========================================================== */
+
+.verify-email-page {
+  min-height: 100dvh;
+}
+
+.verify-email-card {
+  animation: ds-fade-up 0.5s var(--ease) both;
+}
+
+.verify-email-card > p {
+  font-size: 1rem;
+}
+
+.verify-email-button {
+  font-size: 0.95rem;
+}
+
+/* Le résultat (succès ou échec) apparaît avec un petit effet */
+.verify-email-icon.success,
+.verify-email-icon.error {
+  animation: verify-pop 0.45s var(--ease) both;
+}
+
+@keyframes verify-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

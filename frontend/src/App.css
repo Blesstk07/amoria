@@ -25,3 +25,127 @@
     min-height: calc(100vh - 72px);
   }
 }
+/* ==========================================================
+   Lot 5A : landing page (ancres, animations)
+   ========================================================== */
+
+/* La navbar est maintenant collante : les ancres ne doivent pas passer dessous */
+.hero,
+.concept,
+.security,
+.premium,
+.footer {
+  scroll-margin-top: 84px;
+}
+
+@media (max-width: 850px) {
+  .hero,
+  .concept,
+  .security,
+  .premium,
+  .footer {
+    scroll-margin-top: 72px;
+  }
+}
+
+/* Entrée du hero au chargement */
+.hero-content {
+  animation: ds-fade-up 0.7s var(--ease) both;
+}
+
+.hero-visual {
+  animation: ds-fade-up 0.8s var(--ease) 0.15s both;
+}
+
+/* Apparition des sections au défilement */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s var(--ease),
+    transform 0.7s var(--ease);
+  transition-delay: var(--d, 0ms);
+}
+
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll {
+    transition-delay: 0ms !important;
+  }
+}
+/* ==========================================================
+   Passe responsive : landing page
+   ========================================================== */
+
+/* Navbar : entre 851 et 1000px, on resserre pour que tout tienne */
+@media (min-width: 851px) and (max-width: 1000px) {
+  .navbar-container {
+    padding: 0 24px;
+  }
+
+  .navbar-links {
+    gap: 20px;
+  }
+
+  .navbar-actions {
+    gap: 16px;
+  }
+}
+
+/* Concept : 2 colonnes sur tablette (3 cartes étroites étaient trop serrées) */
+@media (min-width: 551px) and (max-width: 1000px) {
+  .concept-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .concept-card:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Footer : zones de toucher confortables, colonne unique sur petits écrans */
+@media (max-width: 850px) {
+  .footer-column > a {
+    padding: 6px 0;
+  }
+}
+
+@media (max-width: 400px) {
+  .footer-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Textes trop petits */
+.hero-trust {
+  font-size: 0.85rem;
+}
+
+.concept-card p {
+  font-size: 0.92rem;
+}
+
+.security-item p {
+  font-size: 0.9rem;
+}
+
+.premium-benefit-text p,
+.premium-footer-description {
+  font-size: 0.86rem;
+}
+
+.footer-brand > p,
+.footer-contact > p,
+.footer-column > a {
+  font-size: 0.9rem;
+}
+
+.footer-bottom p,
+.footer-bottom span,
+.footer-back-top {
+  font-size: 0.82rem;
+}

@@ -1,5 +1,5 @@
-
 import { useState } from 'react'
+import { LoaderCircle } from 'lucide-react'
 
 function ProfileForm({ profile, onSave, saving }) {
   const [form, setForm] = useState({
@@ -38,9 +38,12 @@ function ProfileForm({ profile, onSave, saving }) {
       </div>
 
       <div className="profile-form-grid">
-        <div className="profile-field">
-          <label htmlFor="pseudonym">Pseudonyme</label>
+        <div className="field">
+          <label className="field-label" htmlFor="pseudonym">
+            Pseudonyme
+          </label>
           <input
+            className="field-input"
             id="pseudonym"
             name="pseudonym"
             type="text"
@@ -52,9 +55,12 @@ function ProfileForm({ profile, onSave, saving }) {
           />
         </div>
 
-        <div className="profile-field">
-          <label htmlFor="gender">Genre</label>
+        <div className="field">
+          <label className="field-label" htmlFor="gender">
+            Genre
+          </label>
           <select
+            className="field-input"
             id="gender"
             name="gender"
             value={form.gender}
@@ -66,13 +72,17 @@ function ProfileForm({ profile, onSave, saving }) {
           </select>
         </div>
 
-        <div className="profile-field">
-          <label htmlFor="country">Code du pays</label>
+        <div className="field">
+          <label className="field-label" htmlFor="country">
+            Code du pays
+          </label>
           <input
+            className="field-input"
             id="country"
             name="country"
             type="text"
             maxLength={2}
+            aria-describedby="country-hint"
             value={form.country}
             onChange={(event) =>
               setForm((previous) => ({
@@ -82,11 +92,17 @@ function ProfileForm({ profile, onSave, saving }) {
             }
             required
           />
+          <span className="field-hint" id="country-hint">
+            2 lettres, par exemple CD pour la RD Congo.
+          </span>
         </div>
 
-        <div className="profile-field">
-          <label htmlFor="city">Ville</label>
+        <div className="field">
+          <label className="field-label" htmlFor="city">
+            Ville
+          </label>
           <input
+            className="field-input"
             id="city"
             name="city"
             type="text"
@@ -97,9 +113,12 @@ function ProfileForm({ profile, onSave, saving }) {
           />
         </div>
 
-        <div className="profile-field profile-field-full">
-          <label htmlFor="profession">Profession</label>
+        <div className="field profile-field-full">
+          <label className="field-label" htmlFor="profession">
+            Profession
+          </label>
           <input
+            className="field-input"
             id="profession"
             name="profession"
             type="text"
@@ -110,9 +129,12 @@ function ProfileForm({ profile, onSave, saving }) {
           />
         </div>
 
-        <div className="profile-field profile-field-full">
-          <label htmlFor="biography">À propos de moi</label>
+        <div className="field profile-field-full">
+          <label className="field-label" htmlFor="biography">
+            À propos de moi
+          </label>
           <textarea
+            className="field-input"
             id="biography"
             name="biography"
             rows={5}
@@ -121,13 +143,24 @@ function ProfileForm({ profile, onSave, saving }) {
             value={form.biography}
             onChange={handleChange}
           />
-          <small>{form.biography.length}/1000 caractères</small>
+          <span className="field-hint profile-counter">
+            {form.biography.length}/1000 caractères
+          </span>
         </div>
       </div>
 
-      <button type="submit" disabled={saving}>
-        {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
-      </button>
+      <div className="profile-form-actions">
+        <button type="submit" className="btn btn-primary" disabled={saving}>
+          {saving ? (
+            <>
+              <LoaderCircle size={18} className="profile-spin" />
+              Enregistrement…
+            </>
+          ) : (
+            'Enregistrer les modifications'
+          )}
+        </button>
+      </div>
     </form>
   )
 }

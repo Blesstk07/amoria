@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { LoaderCircle } from 'lucide-react'
 
+import DashboardLayout from '../layouts/DashboardLayout'
 import ProfileForm from '../components/profile/ProfileForm'
 import InterestsSelector from '../components/profile/InterestsSelector'
 import PreferencesForm from '../components/profile/PreferencesForm'
@@ -12,6 +14,19 @@ import {
 } from '../services/profileService'
 
 import './Profile.css'
+
+function ProfileSkeleton() {
+  return (
+    <div className="profile-content" aria-busy="true">
+      <span className="sr-only" role="status">
+        Chargement de votre profil…
+      </span>
+      <div className="skeleton profile-skeleton-card" />
+      <div className="skeleton profile-skeleton-card" />
+      <div className="skeleton profile-skeleton-card" />
+    </div>
+  )
+}
 
 function Profile() {
   const navigate = useNavigate()
@@ -54,6 +69,20 @@ function Profile() {
   useEffect(() => {
     loadProfile()
   }, [])
+
+  // Le message de réussite disparaît tout seul
+  useEffect(() => {
+    if (!success) return
+
+    const timer = setTimeout(() => setSuccess(''), 6000)
+    return () => clearTimeout(timer)
+  }, [success])
+
+  const handleRetry = () => {
+    setError('')
+    setLoading(true)
+    loadProfile()
+  }
 
   const handleProfileSave = async (formData) => {
     setSavingProfile(true)
@@ -127,86 +156,106 @@ function Profile() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="profile-loading">
-        Chargement de votre profil...
-      </div>
-    )
-  }
-
-  if (!profile || !preferences) {
-    return (
-      <div className="profile-loading">
-        <p>{error || 'Impossible de récupérer les informations du profil.'}</p>
-        <button onClick={loadProfile}>Réessayer</button>
-      </div>
-    )
-  }
+  const ready = !loading && profile && preferences
 
   return (
-    <main className="profile-page">
-      <header className="profile-page-header">
-        <div>
-          <Link to="/dashboard" className="profile-back-link">
-            ← Retour au tableau de bord
-          </Link>
-
+    <DashboardLayout breadcrumb="Mon profil">
+      <div className="profile-page">
+        <header className="profile-page-header reveal">
           <h1>Mon profil</h1>
           <p>Faites découvrir votre personnalité sur Amoria.</p>
-        </div>
-      </header>
+        </header>
 
-      {error && (
-        <div className="profile-message error-message" role="alert">
-          {error}
-        </div>
-      )}
+        {loading && <ProfileSkeleton />}
 
-      {success && (
-        <div className="profile-message success-message" role="status">
-          {success}
-        </div>
-      )}
+        {!loading && (!profile || !preferences) && (
+          <div className="alert alert-error profile-load-error" role="alert">
+            <p>{error || 'Impossible de récupérer les informations du profil.'}</p>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleRetry}
+            >
+              Réessayer
+            </button>
+          </div>
+        )}
 
-      <div className="profile-content">
-        <section className="profile-card">
-          <ProfileForm
-            key={`profile-${formVersion}`}
-            profile={profile}
-            onSave={handleProfileSave}
-            saving={savingProfile}
-          />
-        </section>
+        {ready && (
+          <>
+            {(error || success) && (
+              <div className="profile-messages">
+                {error && (
+                  <div className="alert alert-error" role="alert">
+                    {error}
+                  </div>
+                )}
 
-        <section className="profile-card">
-          <InterestsSelector
-            selectedIds={selectedIds}
-            onChange={handleInterestsChange}
-          />
+                {success && (
+                  <div className="alert alert-success" role="status">
+                    {success}
+                  </div>
+                )}
+              </div>
+            )}
 
-          <button
-            type="button"
-            className="profile-save-button"
-            onClick={handleInterestsSave}
-            disabled={savingProfile || selectedIds.length === 0}
-          >
-            {savingProfile
-              ? 'Enregistrement...'
-              : 'Enregistrer mes centres d’intérêt'}
-          </button>
-        </section>
+            <div className="profile-content">
+              <section
+                className="card profile-card reveal"
+                style={{ '--i': 1 }}
+              >
+                <ProfileForm
+                  key={`profile-${formVersion}`}
+                  profile={profile}
+                  onSave={handleProfileSave}
+                  saving={savingProfile}
+                />
+              </section>
 
-        <section className="profile-card">
-          <PreferencesForm
-            key={`preferences-${formVersion}`}
-            preferences={preferences}
-            onSave={handlePreferencesSave}
-            saving={savingPreferences}
-          />
-        </section>
+              <section
+                className="card profile-card reveal"
+                style={{ '--i': 2 }}
+              >
+                <InterestsSelector
+                  selectedIds={selectedIds}
+                  onChange={handleInterestsChange}
+                />
+
+                <div className="profile-save-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleInterestsSave}
+                    disabled={savingProfile || selectedIds.length === 0}
+                  >
+                    {savingProfile ? (
+                      <>
+                        <LoaderCircle size={18} className="profile-spin" />
+                        Enregistrement…
+                      </>
+                    ) : (
+                      'Enregistrer mes centres d’intérêt'
+                    )}
+                  </button>
+                </div>
+              </section>
+
+              <section
+                className="card profile-card reveal"
+                style={{ '--i': 3 }}
+              >
+                <PreferencesForm
+                  key={`preferences-${formVersion}`}
+                  preferences={preferences}
+                  onSave={handlePreferencesSave}
+                  saving={savingPreferences}
+                />
+              </section>
+            </div>
+          </>
+        )}
       </div>
-    </main>
+    </DashboardLayout>
   )
 }
 

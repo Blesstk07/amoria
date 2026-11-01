@@ -1,71 +1,79 @@
 .profile-page {
-  min-height: 100vh;
-  padding: 50px 7%;
-  background: #fff8f4;
-  color: #292329;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 .profile-page-header {
-  margin-bottom: 35px;
-}
-
-.profile-back-link {
-  display: inline-block;
-  margin-bottom: 20px;
-  color: #8d304f;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.profile-back-link:hover {
-  text-decoration: underline;
+  margin-bottom: 26px;
 }
 
 .profile-page-header h1 {
   margin: 0 0 8px;
-  font-size: 2.2rem;
-  color: #8d304f;
+  color: var(--color-primary);
+  font-size: clamp(1.8rem, 3vw, 2.3rem);
 }
 
 .profile-page-header p {
   margin: 0;
-  color: #746970;
+  color: var(--color-muted);
 }
+
+/* Messages : restent visibles pendant le défilement */
+
+.profile-messages {
+  position: sticky;
+  top: 84px;
+  z-index: 5;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.profile-messages .alert {
+  box-shadow: var(--shadow-md);
+}
+
+.profile-load-error {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.profile-load-error p {
+  margin: 0;
+}
+
+/* Cartes */
 
 .profile-content {
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  max-width: 950px;
-  margin: 0 auto;
+  gap: 22px;
 }
 
-.profile-card {
-  padding: 30px;
-  background: #fff;
-  border: 1px solid #f0e2e5;
-  border-radius: 16px;
-  box-shadow: 0 5px 20px rgba(41, 35, 41, 0.04);
+.profile-skeleton-card {
+  height: 280px;
+  border-radius: var(--radius-lg);
 }
 
-.profile-form {
-  width: 100%;
-}
+/* Formulaires */
 
 .profile-form-heading {
-  margin-bottom: 25px;
+  margin-bottom: 24px;
 }
 
 .profile-form-heading h2 {
   margin: 0 0 8px;
+  color: var(--color-primary);
   font-size: 1.3rem;
-  color: #8d304f;
 }
 
 .profile-form-heading p {
   margin: 0;
-  color: #746970;
+  color: var(--color-muted);
   font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 .profile-form-grid {
@@ -74,82 +82,28 @@
   gap: 20px;
 }
 
-.profile-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .profile-field-full {
   grid-column: 1 / -1;
 }
 
-.profile-field label {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.profile-field input,
-.profile-field select,
-.profile-field textarea {
-  width: 100%;
-  padding: 13px 14px;
-  border: 1px solid #e7d9dd;
-  border-radius: 9px;
-  background: #fff;
-  color: #292329;
-  font: inherit;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.profile-field input:focus,
-.profile-field select:focus,
-.profile-field textarea:focus {
-  border-color: #8d304f;
-  box-shadow: 0 0 0 3px rgba(141, 48, 79, 0.1);
-}
-
-.profile-field textarea {
-  resize: vertical;
-  min-height: 120px;
-}
-
-.profile-field small {
+.profile-counter {
   text-align: right;
-  color: #8b7e84;
 }
 
-.profile-form button,
-.profile-save-button {
-  margin-top: 25px;
-  padding: 13px 22px;
-  border: none;
-  border-radius: 9px;
-  background: #8d304f;
-  color: white;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+.profile-form-actions,
+.profile-save-actions {
+  margin-top: 24px;
 }
 
-.profile-form button:hover,
-.profile-save-button:hover {
-  background: #70243e;
-  transform: translateY(-1px);
+.profile-spin {
+  animation: ds-spin 0.9s linear infinite;
 }
 
-.profile-form button:disabled,
-.profile-save-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
+/* Centres d'intérêt */
 
 .interests-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
 }
 
@@ -158,78 +112,61 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 15px;
-  border: 1px solid #eadde1;
-  border-radius: 10px;
+  min-height: 52px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   background: #fff;
-  color: #292329;
+  color: var(--color-charcoal);
   font: inherit;
-  cursor: pointer;
+  font-size: 0.92rem;
   text-align: left;
-  transition: all 0.2s;
+  cursor: pointer;
+  transition:
+    border-color var(--dur) var(--ease),
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
 }
 
 .interest-option:hover {
-  border-color: #8d304f;
-  background: #fff8f4;
+  border-color: var(--color-primary);
+  background: var(--color-ivory);
+  transform: translateY(-1px);
 }
 
 .interest-option.selected {
-  border-color: #8d304f;
-  background: #fdf0f3;
-  color: #8d304f;
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 600;
 }
 
-.interest-icon {
+.interest-emoji {
   font-size: 1.2rem;
 }
 
 .interest-check {
+  display: grid;
+  place-items: center;
   margin-left: auto;
-  font-weight: 700;
 }
 
 .interests-counter {
-  display: block;
-  margin-top: 15px;
-  color: #746970;
+  margin: 16px 0 0;
+  color: var(--color-muted);
+  font-size: 0.88rem;
 }
 
-.profile-message {
-  max-width: 950px;
-  margin: 0 auto 20px;
-  padding: 14px 18px;
-  border-radius: 9px;
-  font-size: 0.95rem;
+.interests-warning {
+  margin: 6px 0 0;
+  color: var(--color-danger);
+  font-size: 0.85rem;
 }
 
-.error-message {
-  border: 1px solid #e8b6b6;
-  background: #fff0f0;
-  color: #a12d2d;
-}
-
-.success-message {
-  border: 1px solid #b9dfc7;
-  background: #effaf2;
-  color: #267342;
-}
-
-.profile-loading {
-  min-height: 70vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-  color: #746970;
-}
+/* Responsive */
 
 @media (max-width: 700px) {
-  .profile-page {
-    padding: 30px 5%;
-  }
-
   .profile-card {
     padding: 22px 18px;
   }
@@ -242,16 +179,65 @@
     grid-column: auto;
   }
 
-  .interests-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .profile-messages {
+    top: 76px;
   }
 
-  .profile-page-header h1 {
-    font-size: 1.8rem;
+  .profile-form-actions .btn,
+  .profile-save-actions .btn {
+    width: 100%;
+  }
+}
+/* ==========================================================
+   Passe responsive : puces « centres d'intérêt »
+   ========================================================== */
+
+.interests-grid {
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}
+
+.interest-option {
+  min-width: 0;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+/* La coche ne prend plus de place dans la puce : elle se pose sur le coin */
+.interest-check {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+@media (max-width: 700px) {
+  .profile-card {
+    padding: 20px 14px;
+  }
+
+  .interests-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .interest-option {
+    min-height: 48px;
+    padding: 8px 10px;
+    gap: 7px;
+    font-size: 0.82rem;
+  }
+
+  .interest-emoji {
+    font-size: 1.05rem;
   }
 }
 
-@media (max-width: 400px) {
+@media (max-width: 359px) {
   .interests-grid {
     grid-template-columns: 1fr;
   }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LoaderCircle } from 'lucide-react'
 
 function PreferencesForm({ preferences, onSave, saving }) {
   const [form, setForm] = useState({
@@ -40,9 +41,12 @@ function PreferencesForm({ preferences, onSave, saving }) {
       </div>
 
       <div className="profile-form-grid">
-        <div className="profile-field">
-          <label htmlFor="preferred_gender">Genre recherché</label>
+        <div className="field">
+          <label className="field-label" htmlFor="preferred_gender">
+            Genre recherché
+          </label>
           <select
+            className="field-input"
             id="preferred_gender"
             name="preferred_gender"
             value={form.preferred_gender}
@@ -54,12 +58,16 @@ function PreferencesForm({ preferences, onSave, saving }) {
           </select>
         </div>
 
-        <div className="profile-field">
-          <label htmlFor="min_age">Âge minimum</label>
+        <div className="field">
+          <label className="field-label" htmlFor="min_age">
+            Âge minimum
+          </label>
           <input
+            className="field-input"
             id="min_age"
             name="min_age"
             type="number"
+            inputMode="numeric"
             min="18"
             max="99"
             value={form.min_age}
@@ -68,12 +76,16 @@ function PreferencesForm({ preferences, onSave, saving }) {
           />
         </div>
 
-        <div className="profile-field">
-          <label htmlFor="max_age">Âge maximum</label>
+        <div className="field">
+          <label className="field-label" htmlFor="max_age">
+            Âge maximum
+          </label>
           <input
+            className="field-input"
             id="max_age"
             name="max_age"
             type="number"
+            inputMode="numeric"
             min="18"
             max="99"
             value={form.max_age}
@@ -82,9 +94,12 @@ function PreferencesForm({ preferences, onSave, saving }) {
           />
         </div>
 
-        <div className="profile-field">
-          <label htmlFor="preferred_country">Pays préféré (facultatif)</label>
+        <div className="field">
+          <label className="field-label" htmlFor="preferred_country">
+            Pays préféré (facultatif)
+          </label>
           <input
+            className="field-input"
             id="preferred_country"
             name="preferred_country"
             type="text"
@@ -100,9 +115,12 @@ function PreferencesForm({ preferences, onSave, saving }) {
           />
         </div>
 
-        <div className="profile-field profile-field-full">
-          <label htmlFor="preferred_city">Ville préférée (facultatif)</label>
+        <div className="field profile-field-full">
+          <label className="field-label" htmlFor="preferred_city">
+            Ville préférée (facultatif)
+          </label>
           <input
+            className="field-input"
             id="preferred_city"
             name="preferred_city"
             type="text"
@@ -114,9 +132,18 @@ function PreferencesForm({ preferences, onSave, saving }) {
         </div>
       </div>
 
-      <button type="submit" disabled={saving}>
-        {saving ? 'Enregistrement...' : 'Enregistrer mes préférences'}
-      </button>
+      <div className="profile-form-actions">
+        <button type="submit" className="btn btn-primary" disabled={saving}>
+          {saving ? (
+            <>
+              <LoaderCircle size={18} className="profile-spin" />
+              Enregistrement…
+            </>
+          ) : (
+            'Enregistrer mes préférences'
+          )}
+        </button>
+      </div>
     </form>
   )
 }

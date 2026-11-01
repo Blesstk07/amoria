@@ -15,6 +15,9 @@ import VerifyEmail from './pages/VerifyEmail'
 import ForgotPassword from './pages/ForgotPassword'
 import Dashboard from './pages/Dashboard'
 import ResetPassword from './pages/ResetPassword'
+import Discover from './pages/Discover'
+import ComingSoon from './pages/ComingSoon'
+import NotFound from './pages/NotFound'
 
 import './App.css'
 
@@ -45,6 +48,13 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/dashboard" element={<Dashboard />} />
+
+        <Route path="/discover" element={<Discover />} />
+
+        <Route path="/likes" element={<ComingSoon section="likes" />} />
+        <Route path="/messages" element={<ComingSoon section="messages" />} />
+
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )
