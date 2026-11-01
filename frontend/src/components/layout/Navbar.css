@@ -1,26 +1,36 @@
 
+/* ==========================================================
+   AMORIA - NAVBAR
+   Navigation responsive et menu mobile
+========================================================== */
+
 .navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   width: 100%;
   height: 84px;
-  background: var(--color-ivory);
+  background: rgba(255, 248, 244, 0.92);
   border-bottom: 1px solid rgba(141, 48, 79, 0.09);
-  position: relative;
-  z-index: 100;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   max-width: 1240px;
   height: 100%;
   margin: 0 auto;
   padding: 0 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .navbar-logo {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 3px;
   color: var(--color-primary);
   font-family: var(--font-heading);
@@ -45,7 +55,7 @@
 .navbar-links > a,
 .navbar-login {
   color: var(--color-charcoal);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
   transition: color 0.2s ease;
@@ -59,23 +69,27 @@
 .navbar-actions {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 24px;
 }
 
 .navbar-register {
-  min-height: 46px;
-  padding: 0 21px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 46px;
   gap: 9px;
+  padding: 0 21px;
+  border: 1px solid transparent;
   border-radius: 5px;
   background: var(--color-primary);
   color: white;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .navbar-register:hover {
@@ -87,6 +101,10 @@
 .navbar-menu-button {
   display: none;
 }
+
+/* ==========================================================
+   MENU MOBILE
+========================================================== */
 
 @media (max-width: 850px) {
   .navbar {
@@ -105,11 +123,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
     border: none;
+    border-radius: 50%;
     background: transparent;
     color: var(--color-primary);
+    cursor: pointer;
+  }
+
+  .navbar-menu-button:hover {
+    background: var(--color-primary-soft);
   }
 
   .navbar-links {
@@ -117,82 +143,17 @@
     top: 72px;
     left: 0;
     right: 0;
-    display: none;
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
+    max-height: calc(100dvh - 72px);
+    overflow-x: hidden;
+    overflow-y: auto;
     padding: 12px 22px 24px;
     background: var(--color-ivory);
     border-bottom: 1px solid var(--color-border);
     box-shadow: 0 15px 25px rgba(41, 35, 41, 0.07);
-  }
-
-  .navbar-links.active {
-    display: flex;
-  }
-
-  .navbar-links > a {
-    padding: 15px 0;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .navbar-mobile-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding-top: 22px;
-  }
-
-  .navbar-mobile-actions .navbar-login {
-    text-align: center;
-  }
-
-  .navbar-mobile-actions .navbar-register {
-    width: 100%;
-  }
-}
-
-@media (max-width: 380px) {
-  .navbar-container {
-    padding: 0 16px;
-  }
-
-  .navbar-logo {
-    font-size: 29px;
-  }
-}
-/* ==========================================================
-   Lot 5A : navbar collante et menu mobile animé
-   ========================================================== */
-
-.navbar {
-  position: sticky;
-  top: 0;
-  background: rgba(255, 248, 244, 0.92);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-}
-
-.navbar-links > a,
-.navbar-login,
-.navbar-register {
-  font-size: 14px;
-}
-
-.navbar-links > a:focus-visible,
-.navbar-login:focus-visible,
-.navbar-register:focus-visible,
-.navbar-logo:focus-visible {
-  border-radius: 4px;
-}
-
-@media (max-width: 850px) {
-  /* Le menu reste dans le DOM : on l'anime au lieu de display:none.
-     visibility:hidden le retire aussi de la navigation au clavier. */
-  .navbar-links {
-    display: flex;
-    max-height: calc(100dvh - 72px);
-    overflow-y: auto;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -207,16 +168,103 @@
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transform: none;
+    transform: translateY(0);
   }
 
   .navbar-links > a {
+    display: block;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--color-border);
     font-size: 16px;
   }
 
+  .navbar-mobile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 22px;
+  }
+
+  .navbar-mobile-actions .navbar-login {
+    display: block;
+    padding: 8px;
+    text-align: center;
+  }
+
+  .navbar-mobile-actions .navbar-register {
+    width: 100%;
+    min-height: 48px;
+  }
+}
+
+/* ==========================================================
+   PETITS TÉLÉPHONES
+========================================================== */
+
+@media (max-width: 380px) {
+  .navbar-container {
+    padding: 0 16px;
+  }
+
+  .navbar-logo {
+    font-size: 29px;
+  }
+
   .navbar-menu-button {
-    width: 44px;
-    height: 44px;
-    cursor: pointer;
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .navbar-links {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+
+/* ==========================================================
+   ACCESSIBILITÉ
+========================================================== */
+
+.navbar-links > a:focus-visible,
+.navbar-login:focus-visible,
+.navbar-register:focus-visible,
+.navbar-logo:focus-visible,
+.navbar-menu-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* ==========================================================
+   MODE PAYSAGE
+========================================================== */
+
+@media (max-width: 850px) and (max-height: 500px) {
+  .navbar-links {
+    max-height: calc(100dvh - 72px);
+    padding-top: 8px;
+    padding-bottom: 12px;
+  }
+
+  .navbar-links > a {
+    padding: 10px 0;
+  }
+
+  .navbar-mobile-actions {
+    gap: 8px;
+    padding-top: 12px;
+  }
+}
+
+/* ==========================================================
+   RÉDUCTION DES ANIMATIONS
+========================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar *,
+  .navbar *::before,
+  .navbar *::after {
+    transition-duration: 0.01ms !important;
   }
 }

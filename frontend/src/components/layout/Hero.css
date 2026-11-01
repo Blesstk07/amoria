@@ -1,27 +1,31 @@
 
 .hero {
   background: var(--color-ivory);
-  padding: 75px 6%;
+  padding: clamp(45px, 6vw, 75px) 6%;
   overflow: hidden;
 }
 
 .hero-container {
+  width: 100%;
   max-width: 1240px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr 0.9fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
   align-items: center;
-  gap: 65px;
+  gap: clamp(30px, 5vw, 65px);
 }
 
 .hero-content {
+  width: 100%;
   max-width: 590px;
+  min-width: 0;
 }
 
 .hero-label {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  max-width: 100%;
   color: var(--color-primary);
   background: #F7E8EC;
   padding: 9px 15px;
@@ -33,10 +37,11 @@
 
 .hero-content h1 {
   color: var(--color-charcoal);
-  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
   line-height: 1.12;
   margin-bottom: 24px;
   letter-spacing: -1.5px;
+  overflow-wrap: break-word;
 }
 
 .hero-content h1 span {
@@ -70,7 +75,9 @@
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 600;
-  transition: 0.25s ease;
+  text-align: center;
+  transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+  cursor: pointer;
 }
 
 .hero-primary-button {
@@ -92,6 +99,12 @@
   background: white;
 }
 
+.hero-primary-button:focus-visible,
+.hero-secondary-button:focus-visible {
+  outline: 3px solid var(--color-secondary);
+  outline-offset: 3px;
+}
+
 .hero-trust {
   display: flex;
   align-items: center;
@@ -109,13 +122,16 @@
 
 .hero-visual {
   position: relative;
+  width: 100%;
   min-width: 0;
 }
 
 .hero-image {
+  display: block;
   width: 100%;
-  height: 530px;
+  height: clamp(350px, 42vw, 530px);
   object-fit: cover;
+  object-position: center;
   border-radius: 180px 180px 12px 12px;
 }
 
@@ -133,15 +149,37 @@
   color: var(--color-primary);
   font-size: 0.8rem;
   font-weight: 500;
+  line-height: 1.5;
 }
 
+/* Tablettes et petits ordinateurs */
+@media (max-width: 1024px) {
+  .hero {
+    padding: 60px 5%;
+  }
+
+  .hero-container {
+    gap: 35px;
+  }
+
+  .hero-content h1 {
+    font-size: clamp(2.6rem, 5vw, 3.5rem);
+  }
+
+  .hero-image {
+    height: 440px;
+    border-radius: 150px 150px 12px 12px;
+  }
+}
+
+/* Tablettes */
 @media (max-width: 850px) {
   .hero {
     padding: 55px 6%;
   }
 
   .hero-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 40px;
   }
 
@@ -149,40 +187,141 @@
     max-width: 650px;
   }
 
+  .hero-description {
+    max-width: 580px;
+  }
+
+  .hero-visual {
+    max-width: 650px;
+    margin: 0 auto;
+  }
+
   .hero-image {
-    height: 430px;
+    height: clamp(350px, 55vw, 430px);
     border-radius: 150px 150px 10px 10px;
   }
 }
 
+/* Téléphones */
 @media (max-width: 500px) {
   .hero {
     padding: 45px 5%;
   }
 
+  .hero-container {
+    gap: 32px;
+  }
+
+  .hero-label {
+    font-size: 0.75rem;
+    padding: 8px 12px;
+    margin-bottom: 20px;
+  }
+
   .hero-content h1 {
-    font-size: 2.7rem;
+    font-size: clamp(2.25rem, 10vw, 2.7rem);
+    line-height: 1.15;
+    letter-spacing: -1px;
+    margin-bottom: 18px;
   }
 
   .hero-description {
     font-size: 0.95rem;
+    line-height: 1.75;
+    margin-bottom: 25px;
   }
 
   .hero-actions {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
 
   .hero-primary-button,
   .hero-secondary-button {
     width: 100%;
-  }
-
-  .hero-image {
-    height: 350px;
+    min-height: 52px;
+    padding: 0 18px;
   }
 
   .hero-trust {
     align-items: flex-start;
+    margin-top: 25px;
+    font-size: 0.75rem;
+  }
+
+  .hero-image {
+    height: clamp(280px, 90vw, 350px);
+    border-radius: 110px 110px 10px 10px;
+  }
+
+  .hero-image-caption {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    padding: 12px;
+    font-size: 0.73rem;
+  }
+}
+
+/* Très petits téléphones */
+@media (max-width: 380px) {
+  .hero {
+    padding: 38px 5%;
+  }
+
+  .hero-content h1 {
+    font-size: 2.2rem;
+  }
+
+  .hero-label {
+    font-size: 0.7rem;
+  }
+
+  .hero-image {
+    height: 290px;
+    border-radius: 95px 95px 10px 10px;
+  }
+
+  .hero-image-caption {
+    font-size: 0.68rem;
+    gap: 7px;
+  }
+}
+
+/* Téléphones en paysage */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero {
+    padding-top: 35px;
+    padding-bottom: 35px;
+  }
+
+  .hero-container {
+    gap: 28px;
+  }
+
+  .hero-image {
+    height: 280px;
+    border-radius: 90px 90px 10px 10px;
+  }
+
+  .hero-content h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+  }
+
+  .hero-trust {
+    margin-top: 20px;
+  }
+}
+
+/* Réduction des animations */
+@media (prefers-reduced-motion: reduce) {
+  .hero-primary-button,
+  .hero-secondary-button {
+    transition: none;
+  }
+
+  .hero-primary-button:hover {
+    transform: none;
   }
 }

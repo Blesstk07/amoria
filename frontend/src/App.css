@@ -1,6 +1,13 @@
 
+/* ==========================================================
+   AMORIA - LANDING PAGE
+========================================================== */
+
+/* ---------- Page placeholder ---------- */
+
 .home-placeholder {
   min-height: calc(100vh - 84px);
+  min-height: calc(100dvh - 84px);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -10,26 +17,23 @@
 }
 
 .home-placeholder h1 {
+  max-width: 100%;
   color: var(--color-primary);
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-size: clamp(2.2rem, 6vw, 4.5rem);
+  line-height: 1.15;
   margin-bottom: 12px;
+  overflow-wrap: break-word;
 }
 
 .home-placeholder p {
+  max-width: 600px;
   color: var(--color-muted);
   font-size: 1rem;
+  line-height: 1.7;
 }
 
-@media (max-width: 850px) {
-  .home-placeholder {
-    min-height: calc(100vh - 72px);
-  }
-}
-/* ==========================================================
-   Lot 5A : landing page (ancres, animations)
-   ========================================================== */
+/* ---------- Ancres et navigation ---------- */
 
-/* La navbar est maintenant collante : les ancres ne doivent pas passer dessous */
 .hero,
 .concept,
 .security,
@@ -38,17 +42,8 @@
   scroll-margin-top: 84px;
 }
 
-@media (max-width: 850px) {
-  .hero,
-  .concept,
-  .security,
-  .premium,
-  .footer {
-    scroll-margin-top: 72px;
-  }
-}
+/* ---------- Animations ---------- */
 
-/* Entrée du hero au chargement */
 .hero-content {
   animation: ds-fade-up 0.7s var(--ease) both;
 }
@@ -57,7 +52,6 @@
   animation: ds-fade-up 0.8s var(--ease) 0.15s both;
 }
 
-/* Apparition des sections au défilement */
 .reveal-on-scroll {
   opacity: 0;
   transform: translateY(24px);
@@ -72,70 +66,27 @@
   transform: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .reveal-on-scroll {
-    transition-delay: 0ms !important;
-  }
-}
-/* ==========================================================
-   Passe responsive : landing page
-   ========================================================== */
+/* ---------- Lisibilité des textes ---------- */
 
-/* Navbar : entre 851 et 1000px, on resserre pour que tout tienne */
-@media (min-width: 851px) and (max-width: 1000px) {
-  .navbar-container {
-    padding: 0 24px;
-  }
-
-  .navbar-links {
-    gap: 20px;
-  }
-
-  .navbar-actions {
-    gap: 16px;
-  }
-}
-
-/* Concept : 2 colonnes sur tablette (3 cartes étroites étaient trop serrées) */
-@media (min-width: 551px) and (max-width: 1000px) {
-  .concept-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .concept-card:last-child {
-    grid-column: 1 / -1;
-  }
-}
-
-/* Footer : zones de toucher confortables, colonne unique sur petits écrans */
-@media (max-width: 850px) {
-  .footer-column > a {
-    padding: 6px 0;
-  }
-}
-
-@media (max-width: 400px) {
-  .footer-main {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Textes trop petits */
 .hero-trust {
   font-size: 0.85rem;
+  line-height: 1.5;
 }
 
 .concept-card p {
   font-size: 0.92rem;
+  line-height: 1.65;
 }
 
 .security-item p {
   font-size: 0.9rem;
+  line-height: 1.65;
 }
 
 .premium-benefit-text p,
 .premium-footer-description {
   font-size: 0.86rem;
+  line-height: 1.6;
 }
 
 .footer-brand > p,
@@ -148,4 +99,164 @@
 .footer-bottom span,
 .footer-back-top {
   font-size: 0.82rem;
+}
+
+/* ---------- Prévention des débordements ---------- */
+
+.hero-content,
+.hero-visual,
+.concept-card,
+.security-item,
+.premium-benefit-text,
+.footer-column {
+  min-width: 0;
+}
+
+.home-placeholder,
+.hero,
+.concept,
+.security,
+.premium,
+.footer {
+  max-width: 100%;
+}
+
+/* ==========================================================
+   RESPONSIVE
+========================================================== */
+
+/* ---------- Écrans intermédiaires ---------- */
+
+@media (min-width: 851px) and (max-width: 1100px) {
+  .navbar-container {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+
+  .navbar-links {
+    gap: 16px;
+  }
+
+  .navbar-actions {
+    gap: 12px;
+  }
+
+  .concept-grid {
+    gap: 18px;
+  }
+}
+
+/* ---------- Tablettes ---------- */
+
+@media (min-width: 551px) and (max-width: 850px) {
+  .home-placeholder {
+    min-height: calc(100vh - 72px);
+    min-height: calc(100dvh - 72px);
+  }
+
+  .concept-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .concept-card:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------- Tablettes et téléphones ---------- */
+
+@media (max-width: 850px) {
+  .hero,
+  .concept,
+  .security,
+  .premium,
+  .footer {
+    scroll-margin-top: 72px;
+  }
+
+  .footer-column > a {
+    display: inline-block;
+    padding: 7px 0;
+  }
+}
+
+/* ---------- Téléphones ---------- */
+
+@media (max-width: 550px) {
+  .home-placeholder {
+    min-height: calc(100vh - 60px);
+    min-height: calc(100dvh - 60px);
+    padding: 28px 16px;
+  }
+
+  .home-placeholder h1 {
+    font-size: clamp(2rem, 9vw, 3rem);
+  }
+
+  .home-placeholder p {
+    font-size: 0.95rem;
+  }
+
+  .concept-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .concept-card:last-child {
+    grid-column: auto;
+  }
+
+  .hero-trust {
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  .footer-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 20px;
+  }
+
+  .footer-bottom {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
+/* ---------- Très petits téléphones ---------- */
+
+@media (max-width: 400px) {
+  .home-placeholder {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .footer-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .footer-bottom p,
+  .footer-bottom span,
+  .footer-back-top {
+    font-size: 0.78rem;
+  }
+
+  .concept-card p,
+  .security-item p {
+    font-size: 0.88rem;
+  }
+}
+
+/* ---------- Réduction des animations ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll,
+  .hero-content,
+  .hero-visual {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
+
+  .reveal-on-scroll {
+    opacity: 1;
+  }
 }

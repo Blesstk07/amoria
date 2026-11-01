@@ -1,204 +1,48 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  Briefcase,
+  Compass,
+  LoaderCircle,
+  MapPin,
+  Sparkles,
+  SlidersHorizontal,
+} from 'lucide-react'
+
+import DashboardLayout from '../layouts/DashboardLayout'
 import {
   getDiscoverProfiles,
   recordProfileView,
 } from '../services/discoveryService'
 
-const styles = `
-  .discover-page {
-    min-height: 100vh;
-    padding: 48px 6%;
-    background: #FFF8F4;
-    color: #292329;
-  }
+import './Discover.css'
 
-  .discover-header {
-    max-width: 1100px;
-    margin: 0 auto 36px;
-  }
+const MAX_VISIBLE_INTERESTS = 4
 
-  .discover-eyebrow {
-    color: #8D304F;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
+function formatLocation(profile) {
+  const country = profile.country === 'CD' ? 'RD Congo' : profile.country
 
-  .discover-title {
-    margin: 10px 0;
-    color: #292329;
-    font-family: Georgia, serif;
-    font-size: clamp(32px, 5vw, 48px);
-    font-weight: 500;
-  }
+  return (
+    [profile.city, country].filter(Boolean).join(', ') ||
+    'Ville non renseignée'
+  )
+}
 
-  .discover-subtitle {
-    max-width: 580px;
-    color: #766B70;
-    font-size: 15px;
-    line-height: 1.7;
-  }
+function DiscoverSkeleton() {
+  return (
+    <div aria-busy="true">
+      <span className="sr-only" role="status">
+        Nous recherchons des profils…
+      </span>
 
-  .discover-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 24px;
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-
-  .discover-card {
-    overflow: hidden;
-    border: 1px solid #F0DDE2;
-    border-radius: 18px;
-    background: #FFFFFF;
-    box-shadow: 0 8px 28px rgba(75, 35, 48, 0.06);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .discover-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 14px 32px rgba(75, 35, 48, 0.11);
-  }
-
-  .discover-card-banner {
-    display: flex;
-    height: 150px;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #8D304F, #E8A9B9);
-  }
-
-  .discover-avatar {
-    display: flex;
-    width: 88px;
-    height: 88px;
-    align-items: center;
-    justify-content: center;
-    border: 3px solid rgba(255, 255, 255, 0.8);
-    border-radius: 50%;
-    background: #FFF8F4;
-    color: #8D304F;
-    font-family: Georgia, serif;
-    font-size: 34px;
-  }
-
-  .discover-card-content {
-    padding: 22px;
-  }
-
-  .discover-card-name {
-    margin: 0;
-    color: #292329;
-    font-family: Georgia, serif;
-    font-size: 25px;
-    font-weight: 500;
-  }
-
-  .discover-card-location {
-    margin-top: 7px;
-    color: #8D304F;
-    font-size: 13px;
-  }
-
-  .discover-card-profession {
-    margin-top: 15px;
-    color: #51464B;
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .discover-card-bio {
-    min-height: 44px;
-    margin-top: 10px;
-    color: #766B70;
-    font-size: 14px;
-    line-height: 1.6;
-    overflow-wrap: anywhere;
-  }
-
-  .discover-interests {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 18px;
-  }
-
-  .discover-interest {
-    padding: 7px 11px;
-    border-radius: 20px;
-    background: #F9E9ED;
-    color: #8D304F;
-    font-size: 12px;
-  }
-
-  .discover-state {
-    max-width: 600px;
-    margin: 65px auto;
-    padding: 35px 24px;
-    border: 1px solid #F0DDE2;
-    border-radius: 18px;
-    background: white;
-    text-align: center;
-  }
-
-  .discover-state h2 {
-    margin: 0 0 12px;
-    font-family: Georgia, serif;
-    font-size: 25px;
-    font-weight: 500;
-  }
-
-  .discover-state p {
-    color: #766B70;
-    line-height: 1.6;
-  }
-
-  .discover-button {
-    margin-top: 20px;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 25px;
-    background: #8D304F;
-    color: white;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s ease;
-  }
-
-  .discover-button:hover {
-    background: #70243D;
-  }
-
-  .discover-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .discover-load-more {
-    display: flex;
-    justify-content: center;
-    margin: 36px auto;
-  }
-
-  @media (max-width: 600px) {
-    .discover-page {
-      padding: 32px 18px;
-    }
-
-    .discover-grid {
-      grid-template-columns: 1fr;
-      gap: 18px;
-    }
-
-    .discover-card-banner {
-      height: 130px;
-    }
-  }
-`
+      <div className="discover-grid">
+        {Array.from({ length: 6 }, (_, index) => (
+          <div key={index} className="skeleton discover-skeleton-card" />
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function Discover() {
   const [profiles, setProfiles] = useState([])
@@ -291,39 +135,34 @@ function Discover() {
   }
 
   return (
-    <>
-      <style>{styles}</style>
-
-      <main className="discover-page">
-        <header className="discover-header">
+    <DashboardLayout breadcrumb="Découvrir">
+      <div className="discover-page">
+        <header className="discover-header reveal">
           <span className="discover-eyebrow">
-            AMORIA · DÉCOUVERTE
+            <Compass size={15} />
+            DÉCOUVERTE
           </span>
 
-          <h1 className="discover-title">
-            Et si une belle rencontre commençait ici ?
-          </h1>
+          <h1>Et si une belle rencontre commençait ici ?</h1>
 
-          <p className="discover-subtitle">
+          <p>
             Découvrez des personnes qui partagent vos envies et vos centres
-            d'intérêt. Prenez le temps de faire connaissance.
+            d’intérêt. Prenez le temps de faire connaissance.
           </p>
         </header>
 
-        {isLoading && (
-          <div className="discover-state">
-            <h2>Nous recherchons des profils...</h2>
-            <p>Un instant, nous préparons vos suggestions.</p>
-          </div>
-        )}
+        {isLoading && <DiscoverSkeleton />}
 
         {!isLoading && error && (
-          <div className="discover-state">
-            <h2>Impossible de charger les profils</h2>
-            <p>{error}</p>
+          <div className="alert alert-error discover-error" role="alert">
+            <div>
+              <strong>Impossible de charger les profils</strong>
+              <p>{error}</p>
+            </div>
 
             <button
-              className="discover-button"
+              type="button"
+              className="btn btn-secondary btn-sm"
               onClick={() => loadProfiles()}
             >
               Réessayer
@@ -332,14 +171,24 @@ function Discover() {
         )}
 
         {!isLoading && !error && profiles.length === 0 && (
-          <div className="discover-state">
+          <section className="card discover-empty reveal">
+            <div className="discover-empty-icon" aria-hidden="true">
+              <Compass size={34} />
+              <Sparkles size={17} />
+            </div>
+
             <h2>Aucun profil pour le moment</h2>
 
             <p>
-              Nous n'avons pas encore trouvé de profil correspondant à vos
+              Nous n’avons pas encore trouvé de profil correspondant à vos
               préférences. Vous pouvez les modifier depuis votre profil.
             </p>
-          </div>
+
+            <Link to="/profile" className="btn btn-primary">
+              <SlidersHorizontal size={18} />
+              Modifier mes préférences
+            </Link>
+          </section>
         )}
 
         {!isLoading && !error && profiles.length > 0 && (
@@ -348,72 +197,98 @@ function Discover() {
               className="discover-grid"
               aria-label="Profils compatibles"
             >
-              {profiles.map((profile) => (
-                <article
-                  className="discover-card"
-                  key={profile.profile_id}
-                >
-                  <div className="discover-card-banner">
-                    <div className="discover-avatar" aria-hidden="true">
-                      {profile.pseudonym?.charAt(0).toUpperCase() || '?'}
-                    </div>
-                  </div>
+              {profiles.map((profile, index) => {
+                const visibleInterests = (profile.interests || []).slice(
+                  0,
+                  MAX_VISIBLE_INTERESTS
+                )
+                const hiddenCount =
+                  (profile.interests?.length || 0) - visibleInterests.length
 
-                  <div className="discover-card-content">
-                    <h2 className="discover-card-name">
-                      {profile.pseudonym}, {profile.age}
-                    </h2>
+                return (
+                  <article
+                    className="card card-interactive discover-card reveal"
+                    key={profile.profile_id}
+                    style={{ '--i': index % 6 }}
+                  >
+                    <div className="discover-card-banner" aria-hidden="true" />
 
-                    <div className="discover-card-location">
-                      {profile.city || 'Ville non renseignée'}
-                      {profile.country ? ` · ${profile.country}` : ''}
-                    </div>
-
-                    {profile.profession && (
-                      <div className="discover-card-profession">
-                        {profile.profession}
+                    <div className="discover-card-body">
+                      <div className="discover-avatar" aria-hidden="true">
+                        {profile.pseudonym?.charAt(0).toUpperCase() || '?'}
                       </div>
-                    )}
 
-                    <p className="discover-card-bio">
-                      {profile.biography ||
-                        'Cette personne n’a pas encore ajouté de présentation.'}
-                    </p>
+                      <h2 className="discover-card-name">
+                        {profile.pseudonym}
+                        <span className="discover-card-age">
+                          , {profile.age}
+                        </span>
+                      </h2>
 
-                    {profile.interests?.length > 0 && (
-                      <div className="discover-interests">
-                        {profile.interests.map((interest) => (
-                          <span
-                            className="discover-interest"
-                            key={interest.id}
-                          >
-                            {interest.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </article>
-              ))}
+                      <p className="discover-card-meta">
+                        <MapPin size={15} />
+                        <span>{formatLocation(profile)}</span>
+                      </p>
+
+                      {profile.profession && (
+                        <p className="discover-card-meta discover-card-job">
+                          <Briefcase size={15} />
+                          <span>{profile.profession}</span>
+                        </p>
+                      )}
+
+                      <p className="discover-card-bio">
+                        {profile.biography ||
+                          'Cette personne n’a pas encore ajouté de présentation.'}
+                      </p>
+
+                      {visibleInterests.length > 0 && (
+                        <ul className="discover-interests">
+                          {visibleInterests.map((interest) => (
+                            <li
+                              className="discover-interest"
+                              key={interest.id}
+                            >
+                              {interest.name}
+                            </li>
+                          ))}
+
+                          {hiddenCount > 0 && (
+                            <li className="discover-interest discover-interest-more">
+                              +{hiddenCount}
+                            </li>
+                          )}
+                        </ul>
+                      )}
+                    </div>
+                  </article>
+                )
+              })}
             </section>
 
             {hasMore && (
               <div className="discover-load-more">
                 <button
-                  className="discover-button"
+                  type="button"
+                  className="btn btn-secondary"
                   onClick={handleLoadMore}
                   disabled={isLoadingMore}
                 >
-                  {isLoadingMore
-                    ? 'Chargement...'
-                    : 'Voir plus de profils'}
+                  {isLoadingMore ? (
+                    <>
+                      <LoaderCircle size={18} className="discover-spin" />
+                      Chargement…
+                    </>
+                  ) : (
+                    'Voir plus de profils'
+                  )}
                 </button>
               </div>
             )}
           </>
         )}
-      </main>
-    </>
+      </div>
+    </DashboardLayout>
   )
 }
 
