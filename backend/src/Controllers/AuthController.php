@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../Services/EmailService.php';
+require_once __DIR__ . '/../Security/Csrf.php'; // adapte le chemin si besoin
 
 class AuthController
 {
@@ -448,6 +449,9 @@ class AuthController
      */
     public static function login(): void
     {
+        $connection = null;
+        $sessionCreated = false;
+
         try {
             // 1. Récupérer les données JSON.
             $input = json_decode(
@@ -463,20 +467,23 @@ class AuthController
             $email = strtolower(self::readString($input, 'email'));
             $password = self::readString($input, 'password', false);
 
-            // 3. Vérifier les champs.
             if (
                 $email === '' ||
                 $password === '' ||
                 strlen($password) > 1024
             ) {
-                self::respond(422, false, 'Veuillez fournir votre adresse e-mail et votre mot de passe.');
+                self::respond(
+                    422,
+                    false,
+                    'Veuillez fournir votre adresse e-mail et votre mot de passe.'
+                );
             }
 
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 self::respond(422, false, 'Adresse e-mail invalide.');
             }
 
-            // 4. Récupérer le compte et son profil.
+            // 3. Récupérer le compte et son profil.
             $connection = Database::getConnection();
 
             $query = $connection->prepare("
@@ -495,13 +502,10 @@ class AuthController
                 LIMIT 1
             ");
 
-            $query->execute([
-                'email' => $email
-            ]);
-
+            $query->execute(['email' => $email]);
             $user = $query->fetch();
 
-            // 5. Vérifier les identifiants.
+            // 4. Vérifier les identifiants.
             if (!$user || !password_verify($password, $user['password_hash'])) {
                 self::respond(
                     401,
@@ -510,7 +514,7 @@ class AuthController
                 );
             }
 
-            // 6. Vérifier que l'adresse e-mail est confirmée.
+            // 5. Vérifier l'adresse e-mail.
             if ($user['email_verified_at'] === null) {
                 self::respond(
                     403,
@@ -519,7 +523,7 @@ class AuthController
                 );
             }
 
-            // 7. Vérifier l'état du compte.
+            // 6. Vérifier l'état du compte.
             if (
                 $user['account_status'] !== 'ACTIVE' ||
                 $user['deletion_status'] !== 'NONE'
@@ -531,7 +535,7 @@ class AuthController
                 );
             }
 
-            // 8. Vérifier que la session est bien initialisée.
+            // 7. Vérifier que PHP possède une session active.
             if (session_status() !== PHP_SESSION_ACTIVE) {
                 self::respond(
                     500,
@@ -540,8 +544,7 @@ class AuthController
                 );
             }
 
-            // 9. Régénérer l'identifiant pour prévenir
-            // les attaques par fixation de session.
+            // 8. Régénérer l'identifiant de session.
             if (!session_regenerate_id(true)) {
                 self::respond(
                     500,
@@ -550,14 +553,60 @@ class AuthController
                 );
             }
 
-            // 10. Enregistrer les informations en session.
+            // 9. Préparer les informations de session.
+            $now = time();
+            $newSessionId = session_id();
+            $sessionTokenHash = hash('sha256', $newSessionId);
+
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+
+            $userAgent = substr(
+                $_SERVER['HTTP_USER_AGENT'] ?? '',
+                0,
+                500
+            );
+
+            // 10. Enregistrer d'abord la session dans MariaDB.
+            $sessionQuery = $connection->prepare("
+                INSERT INTO user_sessions (
+                    user_id,
+                    session_token_hash,
+                    ip_address,
+                    user_agent,
+                    last_activity_at,
+                    expires_at
+                ) VALUES (
+                    :user_id,
+                    :session_token_hash,
+                    :ip_address,
+                    :user_agent,
+                    NOW(),
+                    DATE_ADD(NOW(), INTERVAL 12 HOUR)
+                )
+            ");
+
+            $sessionQuery->execute([
+                'user_id' => (int) $user['id'],
+                'session_token_hash' => $sessionTokenHash,
+                'ip_address' => $ipAddress,
+                'user_agent' => $userAgent
+            ]);
+
+            $sessionCreated = true;
+
+            // 11. Après confirmation SQL, authentifier la session PHP.
             $_SESSION = [
                 'user_id' => (int) $user['id'],
                 'role_id' => (int) $user['role_id'],
-                'authenticated_at' => time()
+                'authenticated_at' => $now,
+                'last_activity_at' => $now
             ];
 
-            // 11. Répondre au frontend.
+            // 12. Générer un nouveau jeton CSRF après authentification.
+            // (après l'écriture de $_SESSION, qui efface l'ancien jeton)
+            $csrfToken = Csrf::regenerateToken();
+
+            // 13. Répondre au frontend.
             self::respond(
                 200,
                 true,
@@ -568,28 +617,48 @@ class AuthController
                         'email' => $user['email'],
                         'pseudonym' => $user['pseudonym'],
                         'roleId' => (int) $user['role_id']
-                    ]
+                    ],
+                    'csrfToken' => $csrfToken
                 ]
             );
-        } catch (PDOException $e) {
-            error_log(
-                'Erreur SQL lors de la connexion Amoria : ' . $e->getMessage()
-            );
-
-            self::respond(
-                500,
-                false,
-                'Une erreur est survenue lors de la connexion.'
-            );
         } catch (Throwable $e) {
+            // 14. En cas d'échec, nettoyer toute session créée.
+            if ($sessionCreated && $connection instanceof PDO) {
+                try {
+                    $sessionTokenHash = hash('sha256', session_id());
+
+                    $revokeSession = $connection->prepare("
+                        UPDATE user_sessions
+                        SET revoked_at = NOW()
+                        WHERE session_token_hash = :session_token_hash
+                          AND revoked_at IS NULL
+                    ");
+
+                    $revokeSession->execute([
+                        'session_token_hash' => $sessionTokenHash
+                    ]);
+                } catch (Throwable $cleanupError) {
+                    error_log(
+                        'Erreur de nettoyage de session Amoria : '
+                        . $cleanupError->getMessage()
+                    );
+                }
+            }
+
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION = [];
+                session_destroy();
+            }
+
             error_log(
-                'Erreur lors de la connexion Amoria : ' . $e->getMessage()
+                'Erreur lors de la connexion Amoria : '
+                . $e->getMessage()
             );
 
             self::respond(
                 500,
                 false,
-                'Une erreur interne est survenue.'
+                'Une erreur interne est survenue lors de la connexion.'
             );
         }
     }
@@ -721,360 +790,461 @@ class AuthController
         }
     }
 
-    
-/**
- * Demander la réinitialisation du mot de passe.
- */
-public static function forgotPassword(): void
-{
-    $genericMessage = 'Si cette adresse correspond à un compte actif et vérifié, un e-mail de réinitialisation sera envoyé.';
+    /**
+     * Demander la réinitialisation du mot de passe.
+     */
+    public static function forgotPassword(): void
+    {
+        $genericMessage = 'Si cette adresse correspond à un compte actif et vérifié, un e-mail de réinitialisation sera envoyé.';
 
-    try {
-        $input = json_decode(
-            (string) file_get_contents('php://input'),
-            true
-        );
-
-        if (!is_array($input)) {
-            self::respond(
-                400,
-                false,
-                'Les données envoyées sont invalides.'
-            );
-        }
-
-        $email = strtolower(self::readString($input, 'email'));
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            self::respond(
-                422,
-                false,
-                'Adresse e-mail invalide.'
-            );
-        }
-
-        $connection = Database::getConnection();
-
-        $connection->beginTransaction();
-
-        // Rechercher uniquement les comptes actifs et vérifiés.
-        $query = $connection->prepare("
-            SELECT
-                u.id,
-                p.pseudonym
-            FROM users u
-            INNER JOIN profiles p ON p.user_id = u.id
-            WHERE u.email = :email
-              AND u.email_verified_at IS NOT NULL
-              AND u.account_status = 'ACTIVE'
-              AND u.deletion_status = 'NONE'
-            LIMIT 1
-            FOR UPDATE
-        ");
-
-        $query->execute(['email' => $email]);
-        $user = $query->fetch();
-
-        // Même réponse, que le compte existe ou non.
-        if (!$user) {
-            $connection->commit();
-
-            self::respond(200, true, $genericMessage);
-        }
-
-        // Invalider les anciens tokens encore utilisables.
-        $invalidate = $connection->prepare("
-            UPDATE password_reset_tokens
-            SET invalidated_at = NOW()
-            WHERE user_id = :user_id
-              AND used_at IS NULL
-              AND invalidated_at IS NULL
-        ");
-
-        $invalidate->execute([
-            'user_id' => $user['id']
-        ]);
-
-        // Générer un token aléatoire de 64 caractères hexadécimaux.
-        $token = bin2hex(random_bytes(32));
-
-        // Stocker uniquement son hash SHA-256.
-        $tokenHash = hash('sha256', $token);
-
-        $insert = $connection->prepare("
-            INSERT INTO password_reset_tokens (
-                user_id,
-                token_hash,
-                expires_at
-            )
-            VALUES (
-                :user_id,
-                :token_hash,
-                DATE_ADD(NOW(), INTERVAL 30 MINUTE)
-            )
-        ");
-
-        $insert->execute([
-            'user_id' => $user['id'],
-            'token_hash' => $tokenHash
-        ]);
-
-        $connection->commit();
-
-        // Envoyer le lien de réinitialisation.
         try {
-            EmailService::sendPasswordResetEmail(
-                $email,
-                $user['pseudonym'],
-                $token
-            );
-        } catch (Throwable $mailError) {
-            error_log(
-                'Erreur d’envoi du mail de réinitialisation Amoria : '
-                . $mailError->getMessage()
+            $input = json_decode(
+                (string) file_get_contents('php://input'),
+                true
             );
 
-            // Invalider le token si l'e-mail n'a pas pu être envoyé.
-            $invalidateFailedToken = $connection->prepare("
-                UPDATE password_reset_tokens
-                SET invalidated_at = NOW()
-                WHERE token_hash = :token_hash
+            if (!is_array($input)) {
+                self::respond(
+                    400,
+                    false,
+                    'Les données envoyées sont invalides.'
+                );
+            }
+
+            $email = strtolower(self::readString($input, 'email'));
+
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                self::respond(
+                    422,
+                    false,
+                    'Adresse e-mail invalide.'
+                );
+            }
+
+            $connection = Database::getConnection();
+
+            $connection->beginTransaction();
+
+            // Rechercher uniquement les comptes actifs et vérifiés.
+            $query = $connection->prepare("
+                SELECT
+                    u.id,
+                    p.pseudonym
+                FROM users u
+                INNER JOIN profiles p ON p.user_id = u.id
+                WHERE u.email = :email
+                  AND u.email_verified_at IS NOT NULL
+                  AND u.account_status = 'ACTIVE'
+                  AND u.deletion_status = 'NONE'
+                LIMIT 1
+                FOR UPDATE
             ");
 
-            $invalidateFailedToken->execute([
+            $query->execute(['email' => $email]);
+            $user = $query->fetch();
+
+            // Même réponse, que le compte existe ou non.
+            if (!$user) {
+                $connection->commit();
+
+                self::respond(200, true, $genericMessage);
+            }
+
+            // Invalider les anciens tokens encore utilisables.
+            $invalidate = $connection->prepare("
+                UPDATE password_reset_tokens
+                SET invalidated_at = NOW()
+                WHERE user_id = :user_id
+                  AND used_at IS NULL
+                  AND invalidated_at IS NULL
+            ");
+
+            $invalidate->execute([
+                'user_id' => $user['id']
+            ]);
+
+            // Générer un token aléatoire de 64 caractères hexadécimaux.
+            $token = bin2hex(random_bytes(32));
+
+            // Stocker uniquement son hash SHA-256.
+            $tokenHash = hash('sha256', $token);
+
+            $insert = $connection->prepare("
+                INSERT INTO password_reset_tokens (
+                    user_id,
+                    token_hash,
+                    expires_at
+                )
+                VALUES (
+                    :user_id,
+                    :token_hash,
+                    DATE_ADD(NOW(), INTERVAL 30 MINUTE)
+                )
+            ");
+
+            $insert->execute([
+                'user_id' => $user['id'],
                 'token_hash' => $tokenHash
             ]);
+
+            $connection->commit();
+
+            // Envoyer le lien de réinitialisation.
+            try {
+                EmailService::sendPasswordResetEmail(
+                    $email,
+                    $user['pseudonym'],
+                    $token
+                );
+            } catch (Throwable $mailError) {
+                error_log(
+                    'Erreur d’envoi du mail de réinitialisation Amoria : '
+                    . $mailError->getMessage()
+                );
+
+                // Invalider le token si l'e-mail n'a pas pu être envoyé.
+                $invalidateFailedToken = $connection->prepare("
+                    UPDATE password_reset_tokens
+                    SET invalidated_at = NOW()
+                    WHERE token_hash = :token_hash
+                ");
+
+                $invalidateFailedToken->execute([
+                    'token_hash' => $tokenHash
+                ]);
+            }
+
+            self::respond(200, true, $genericMessage);
+        } catch (PDOException $e) {
+            if (
+                isset($connection) &&
+                $connection->inTransaction()
+            ) {
+                $connection->rollBack();
+            }
+
+            error_log(
+                'Erreur SQL forgotPassword Amoria : '
+                . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Une erreur interne est survenue.'
+            );
+        } catch (Throwable $e) {
+            if (
+                isset($connection) &&
+                $connection->inTransaction()
+            ) {
+                $connection->rollBack();
+            }
+
+            error_log(
+                'Erreur forgotPassword Amoria : '
+                . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Une erreur interne est survenue.'
+            );
         }
-
-        self::respond(200, true, $genericMessage);
-
-    } catch (PDOException $e) {
-        if (
-            isset($connection) &&
-            $connection->inTransaction()
-        ) {
-            $connection->rollBack();
-        }
-
-        error_log(
-            'Erreur SQL forgotPassword Amoria : '
-            . $e->getMessage()
-        );
-
-        self::respond(
-            500,
-            false,
-            'Une erreur interne est survenue.'
-        );
-
-    } catch (Throwable $e) {
-        if (
-            isset($connection) &&
-            $connection->inTransaction()
-        ) {
-            $connection->rollBack();
-        }
-
-        error_log(
-            'Erreur forgotPassword Amoria : '
-            . $e->getMessage()
-        );
-
-        self::respond(
-            500,
-            false,
-            'Une erreur interne est survenue.'
-        );
     }
-}
 
-/**
- * Réinitialiser le mot de passe avec un token valide.
- */
-public static function resetPassword(): void
-{
-    try {
-        $input = json_decode(
-            (string) file_get_contents('php://input'),
-            true
-        );
+    /**
+     * Réinitialiser le mot de passe avec un token valide.
+     */
+    public static function resetPassword(): void
+    {
+        try {
+            $input = json_decode(
+                (string) file_get_contents('php://input'),
+                true
+            );
 
-        if (!is_array($input)) {
+            if (!is_array($input)) {
+                self::respond(
+                    400,
+                    false,
+                    'Les données envoyées sont invalides.'
+                );
+            }
+
+            $token = self::readString($input, 'token');
+            $password = self::readString($input, 'password', false);
+            $passwordConfirmation = self::readString(
+                $input,
+                'passwordConfirmation',
+                false
+            );
+
+            // Vérifier le format du token.
+            if (!preg_match('/^[a-f0-9]{64}$/i', $token)) {
+                self::respond(
+                    422,
+                    false,
+                    'Le lien de réinitialisation est invalide ou expiré.'
+                );
+            }
+
+            // Vérifier le nouveau mot de passe.
+            if (strlen($password) < 8 || strlen($password) > 72) {
+                self::respond(
+                    422,
+                    false,
+                    'Le mot de passe doit contenir entre 8 et 72 octets.'
+                );
+            }
+
+            if ($password !== $passwordConfirmation) {
+                self::respond(
+                    422,
+                    false,
+                    'Les mots de passe ne correspondent pas.'
+                );
+            }
+
+            $connection = Database::getConnection();
+
+            $connection->beginTransaction();
+
+            // Rechercher et verrouiller le token.
+            $query = $connection->prepare("
+                SELECT
+                    t.id,
+                    t.user_id
+                FROM password_reset_tokens t
+                INNER JOIN users u ON u.id = t.user_id
+                WHERE t.token_hash = :token_hash
+                  AND t.used_at IS NULL
+                  AND t.invalidated_at IS NULL
+                  AND t.expires_at > NOW()
+                  AND u.account_status = 'ACTIVE'
+                  AND u.deletion_status = 'NONE'
+                LIMIT 1
+                FOR UPDATE
+            ");
+
+            $query->execute([
+                'token_hash' => hash('sha256', $token)
+            ]);
+
+            $resetToken = $query->fetch();
+
+            if (!$resetToken) {
+                $connection->rollBack();
+
+                self::respond(
+                    400,
+                    false,
+                    'Le lien de réinitialisation est invalide ou expiré.'
+                );
+            }
+
+            // Générer le nouveau hash du mot de passe.
+            $passwordHash = password_hash(
+                $password,
+                PASSWORD_DEFAULT
+            );
+
+            if ($passwordHash === false) {
+                throw new RuntimeException(
+                    'Impossible de sécuriser le nouveau mot de passe.'
+                );
+            }
+
+            // Mettre à jour le mot de passe du compte.
+            $updatePassword = $connection->prepare("
+                UPDATE users
+                SET password_hash = :password_hash,
+                    updated_at = NOW()
+                WHERE id = :user_id
+            ");
+
+            $updatePassword->execute([
+                'password_hash' => $passwordHash,
+                'user_id' => $resetToken['user_id']
+            ]);
+
+            // Marquer le token utilisé.
+            $markUsed = $connection->prepare("
+                UPDATE password_reset_tokens
+                SET used_at = NOW()
+                WHERE id = :token_id
+            ");
+
+            $markUsed->execute([
+                'token_id' => $resetToken['id']
+            ]);
+
+            // Invalider les autres tokens du même compte.
+            $invalidateOthers = $connection->prepare("
+                UPDATE password_reset_tokens
+                SET invalidated_at = NOW()
+                WHERE user_id = :user_id
+                  AND id != :token_id
+                  AND used_at IS NULL
+                  AND invalidated_at IS NULL
+            ");
+
+            $invalidateOthers->execute([
+                'user_id' => $resetToken['user_id'],
+                'token_id' => $resetToken['id']
+            ]);
+
+            // Révoquer toutes les sessions actives de cet utilisateur.
+            $revokeSessions = $connection->prepare("
+                UPDATE user_sessions
+                SET revoked_at = NOW()
+                WHERE user_id = :user_id
+                  AND revoked_at IS NULL
+            ");
+
+            $revokeSessions->execute([
+                'user_id' => $resetToken['user_id']
+            ]);
+
+            $connection->commit();
+
             self::respond(
-                400,
-                false,
-                'Les données envoyées sont invalides.'
+                200,
+                true,
+                'Ton mot de passe a été réinitialisé avec succès.'
             );
-        }
+        } catch (PDOException $e) {
+            if (
+                isset($connection) &&
+                $connection->inTransaction()
+            ) {
+                $connection->rollBack();
+            }
 
-        $token = self::readString($input, 'token');
-        $password = self::readString($input, 'password', false);
-        $passwordConfirmation = self::readString(
-            $input,
-            'passwordConfirmation',
-            false
-        );
-
-        // Vérifier le format du token.
-        if (!preg_match('/^[a-f0-9]{64}$/i', $token)) {
-            self::respond(
-                422,
-                false,
-                'Le lien de réinitialisation est invalide ou expiré.'
+            error_log(
+                'Erreur SQL resetPassword Amoria : '
+                . $e->getMessage()
             );
-        }
-
-        // Vérifier le nouveau mot de passe.
-        if (strlen($password) < 8 || strlen($password) > 72) {
-            self::respond(
-                422,
-                false,
-                'Le mot de passe doit contenir entre 8 et 72 octets.'
-            );
-        }
-
-        if ($password !== $passwordConfirmation) {
-            self::respond(
-                422,
-                false,
-                'Les mots de passe ne correspondent pas.'
-            );
-        }
-
-        $connection = Database::getConnection();
-
-        $connection->beginTransaction();
-
-        // Rechercher et verrouiller le token.
-        $query = $connection->prepare("
-            SELECT
-                t.id,
-                t.user_id
-            FROM password_reset_tokens t
-            INNER JOIN users u ON u.id = t.user_id
-            WHERE t.token_hash = :token_hash
-              AND t.used_at IS NULL
-              AND t.invalidated_at IS NULL
-              AND t.expires_at > NOW()
-              AND u.account_status = 'ACTIVE'
-              AND u.deletion_status = 'NONE'
-            LIMIT 1
-            FOR UPDATE
-        ");
-
-        $query->execute([
-            'token_hash' => hash('sha256', $token)
-        ]);
-
-        $resetToken = $query->fetch();
-
-        if (!$resetToken) {
-            $connection->rollBack();
 
             self::respond(
-                400,
+                500,
                 false,
-                'Le lien de réinitialisation est invalide ou expiré.'
+                'Une erreur interne est survenue.'
+            );
+        } catch (Throwable $e) {
+            if (
+                isset($connection) &&
+                $connection->inTransaction()
+            ) {
+                $connection->rollBack();
+            }
+
+            error_log(
+                'Erreur resetPassword Amoria : '
+                . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Une erreur interne est survenue.'
             );
         }
-
-        // Générer le nouveau hash du mot de passe.
-        $passwordHash = password_hash(
-            $password,
-            PASSWORD_DEFAULT
-        );
-
-        if ($passwordHash === false) {
-            throw new RuntimeException(
-                'Impossible de sécuriser le nouveau mot de passe.'
-            );
-        }
-
-        // Mettre à jour le mot de passe du compte.
-        $updatePassword = $connection->prepare("
-            UPDATE users
-            SET password_hash = :password_hash,
-                updated_at = NOW()
-            WHERE id = :user_id
-        ");
-
-        $updatePassword->execute([
-            'password_hash' => $passwordHash,
-            'user_id' => $resetToken['user_id']
-        ]);
-
-        // Marquer le token utilisé.
-        $markUsed = $connection->prepare("
-            UPDATE password_reset_tokens
-            SET used_at = NOW()
-            WHERE id = :token_id
-        ");
-
-        $markUsed->execute([
-            'token_id' => $resetToken['id']
-        ]);
-
-        // Invalider les autres tokens du même compte.
-        $invalidateOthers = $connection->prepare("
-            UPDATE password_reset_tokens
-            SET invalidated_at = NOW()
-            WHERE user_id = :user_id
-              AND id != :token_id
-              AND used_at IS NULL
-              AND invalidated_at IS NULL
-        ");
-
-        $invalidateOthers->execute([
-            'user_id' => $resetToken['user_id'],
-            'token_id' => $resetToken['id']
-        ]);
-
-        $connection->commit();
-
-        self::respond(
-            200,
-            true,
-            'Ton mot de passe a été réinitialisé avec succès.'
-        );
-
-    } catch (PDOException $e) {
-        if (
-            isset($connection) &&
-            $connection->inTransaction()
-        ) {
-            $connection->rollBack();
-        }
-
-        error_log(
-            'Erreur SQL resetPassword Amoria : '
-            . $e->getMessage()
-        );
-
-        self::respond(
-            500,
-            false,
-            'Une erreur interne est survenue.'
-        );
-
-    } catch (Throwable $e) {
-        if (
-            isset($connection) &&
-            $connection->inTransaction()
-        ) {
-            $connection->rollBack();
-        }
-
-        error_log(
-            'Erreur resetPassword Amoria : '
-            . $e->getMessage()
-        );
-
-        self::respond(
-            500,
-            false,
-            'Une erreur interne est survenue.'
-        );
     }
-}
 
+    /**
+     * Déconnecter le membre et révoquer sa session en base de données.
+     */
+    public static function logout(): void
+    {
+        $revocationFailed = false;
+
+        try {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+
+                // 1. Récupérer les informations avant de détruire la session.
+                $userId = $_SESSION['user_id'] ?? null;
+                $sessionTokenHash = hash('sha256', session_id());
+
+                // 2. Révoquer uniquement la session actuelle.
+                if ($userId !== null) {
+                    try {
+                        $connection = Database::getConnection();
+
+                        $revokeSession = $connection->prepare("
+                            UPDATE user_sessions
+                            SET revoked_at = NOW()
+                            WHERE user_id = :user_id
+                              AND session_token_hash = :session_token_hash
+                              AND revoked_at IS NULL
+                        ");
+
+                        $revokeSession->execute([
+                            'user_id' => $userId,
+                            'session_token_hash' => $sessionTokenHash
+                        ]);
+                    } catch (Throwable $databaseError) {
+                        $revocationFailed = true;
+
+                        error_log(
+                            'Erreur de révocation de session Amoria : '
+                            . $databaseError->getMessage()
+                        );
+                    }
+                }
+
+                // 3. Récupérer les paramètres du cookie.
+                $cookieParams = session_get_cookie_params();
+
+                // 4. Vider les données de session.
+                $_SESSION = [];
+
+                // 5. Expirer le cookie dans le navigateur.
+                if (ini_get('session.use_cookies')) {
+                    setcookie(session_name(), '', [
+                        'expires' => time() - 42000,
+                        'path' => $cookieParams['path'],
+                        'domain' => $cookieParams['domain'],
+                        'secure' => $cookieParams['secure'],
+                        'httponly' => $cookieParams['httponly'],
+                        'samesite' => $cookieParams['samesite'] ?: 'Lax'
+                    ]);
+                }
+
+                // 6. Détruire la session PHP.
+                if (!session_destroy()) {
+                    throw new RuntimeException(
+                        'Impossible de détruire la session PHP.'
+                    );
+                }
+            }
+
+            // 7. Signaler un éventuel échec de révocation en base.
+            if ($revocationFailed) {
+                self::respond(
+                    500,
+                    false,
+                    'Votre session locale a été détruite, mais sa révocation en base a échoué.'
+                );
+            }
+
+            self::respond(
+                200,
+                true,
+                'Vous avez été déconnecté avec succès.'
+            );
+        } catch (Throwable $e) {
+            error_log(
+                'Erreur lors de la déconnexion Amoria : '
+                . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Une erreur est survenue lors de la déconnexion.'
+            );
+        }
+    }
 }

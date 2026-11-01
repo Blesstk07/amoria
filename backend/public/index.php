@@ -8,14 +8,16 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 error_reporting(E_ALL);
 
-require_once __DIR__ . '/../config/session.php';
-
 try {
+    // Charger l'autoloader Composer
     require_once __DIR__ . '/../vendor/autoload.php';
-    require_once __DIR__ . '/../config/session.php';
 
+    // Charger les variables d'environnement
     $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__));
     $dotenv->load();
+
+    // Initialiser la session
+    require_once __DIR__ . '/../config/session.php';
 
     // Charger le routeur
     require_once __DIR__ . '/../src/Routes/Router.php';

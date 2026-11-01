@@ -39,4 +39,6 @@ $router->post('/api/auth/logout', $action('logout'));
 
     // Demande de réinitialisation du mot de passe (à écrire)
     $router->post('/api/auth/forgot-password', $action('forgotPassword'));
+    // Réinitialisation effective du mot de passe
+    $router->post('/api/auth/reset-password', $action('resetPassword'));
 };

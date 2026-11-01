@@ -27,27 +27,54 @@ function VerifyEmail() {
         return
       }
 
-      if (!/^[a-f0-9]{64}$/i.test(token)) {
+      // Même format que celui attendu par le backend.
+      if (!/^[a-f0-9]{64}$/.test(token)) {
         setStatus('error')
         setMessage('Le format du lien de vérification est invalide.')
         return
       }
 
       try {
+        // 1. Récupérer le jeton CSRF.
+        const csrfResponse = await fetch('/api/csrf-token', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+          },
+        })
+
+        const csrfResult = await csrfResponse.json().catch(() => null)
+
+        if (
+          !csrfResponse.ok ||
+          !csrfResult?.success ||
+          !csrfResult.data?.csrfToken
+        ) {
+          throw new Error(
+            'Impossible de sécuriser la vérification. Réessaie.'
+          )
+        }
+
+        // 2. Vérifier l'adresse avec le jeton CSRF.
         const response = await fetch('/api/auth/verify-email', {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-Token': csrfResult.data.csrfToken,
           },
           body: JSON.stringify({ token }),
         })
 
-        const result = await response.json()
+        const result = await response.json().catch(() => null)
 
-        if (!response.ok || !result.success) {
+        if (!response.ok || !result?.success) {
           setStatus('error')
           setMessage(
-            result.message || 'La vérification de ton adresse e-mail a échoué.'
+            result?.message ||
+              'La vérification de ton adresse e-mail a échoué.'
           )
           return
         }
@@ -56,9 +83,11 @@ function VerifyEmail() {
         setMessage(result.message)
       } catch (error) {
         console.error('Erreur de vérification :', error)
+
         setStatus('error')
         setMessage(
-          'Impossible de contacter le serveur. Vérifie ta connexion et réessaie.'
+          error.message ||
+            'Impossible de contacter le serveur. Vérifie ta connexion et réessaie.'
         )
       }
     }

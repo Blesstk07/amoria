@@ -66,12 +66,69 @@ function Dashboard() {
     fetchDashboard()
   }, [navigate])
 
+  // Déconnexion sécurisée
+  const handleLogout = async () => {
+    try {
+      const csrfToken = sessionStorage.getItem('csrfToken')
+
+      if (!csrfToken) {
+        throw new Error(
+          'Session de sécurité introuvable. Veuillez vous reconnecter.'
+        )
+      }
+
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'X-CSRF-Token': csrfToken,
+        },
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message || 'Impossible de vous déconnecter.'
+        )
+      }
+
+      sessionStorage.removeItem('csrfToken')
+
+      navigate('/login', { replace: true })
+    } catch (err) {
+      setError(err.message || 'Une erreur est survenue.')
+    }
+  }
+
   const navigation = [
-    { label: 'Tableau de bord', icon: House, active: true },
-    { label: 'Découvrir', icon: Compass },
-    { label: 'Mes likes', icon: Heart },
-    { label: 'Messages', icon: MessageCircle },
-    { label: 'Mon profil', icon: UserRound },
+    {
+      label: 'Tableau de bord',
+      icon: House,
+      path: '/dashboard',
+      active: true,
+    },
+    {
+      label: 'Découvrir',
+      icon: Compass,
+      path: '/discover',
+    },
+    {
+      label: 'Mes likes',
+      icon: Heart,
+      path: '/likes',
+    },
+    {
+      label: 'Messages',
+      icon: MessageCircle,
+      path: '/messages',
+    },
+    {
+      label: 'Mon profil',
+      icon: UserRound,
+      path: '/profile',
+    },
   ]
 
   const accountStatus = {
@@ -85,8 +142,12 @@ function Dashboard() {
 
       {/* Barre latérale */}
       <aside className={`dashboard-sidebar ${menuOpen ? 'open' : ''}`}>
-        <Link to="/" className="dashboard-brand">
-          amoria <Heart size={19} fill="currentColor" />
+        <Link
+          to="/"
+          className="dashboard-brand"
+          onClick={() => setMenuOpen(false)}
+        >
+          Amoria <Heart size={19} fill="currentColor" />
         </Link>
 
         <div className="dashboard-sidebar-label">
@@ -98,23 +159,21 @@ function Dashboard() {
             const Icon = item.icon
 
             return (
-              <a
-                href="#"
+              <Link
+                to={item.path}
                 key={item.label}
                 className={`dashboard-nav-item ${
                   item.active ? 'active' : ''
                 }`}
-                onClick={(event) => {
-                  event.preventDefault()
-                  setMenuOpen(false)
-                }}
+                onClick={() => setMenuOpen(false)}
               >
                 <Icon size={19} />
                 <span>{item.label}</span>
+
                 {item.active && (
                   <span className="dashboard-active-dot" />
                 )}
-              </a>
+              </Link>
             )
           })}
         </nav>
@@ -124,14 +183,29 @@ function Dashboard() {
             <ShieldCheck size={21} />
             <div>
               <strong>Votre sécurité</strong>
-              <span>Un espace conçu pour votre tranquillité.</span>
+              <span>
+                Un espace conçu pour votre tranquillité.
+              </span>
             </div>
           </div>
 
-          <Link to="/" className="dashboard-nav-item">
+          <Link
+            to="/"
+            className="dashboard-nav-item"
+            onClick={() => setMenuOpen(false)}
+          >
             <Settings size={19} />
             <span>Retour à l'accueil public</span>
           </Link>
+
+          <button
+            type="button"
+            className="dashboard-nav-item dashboard-logout"
+            onClick={handleLogout}
+          >
+            <LogOut size={19} />
+            <span>Se déconnecter</span>
+          </button>
         </div>
       </aside>
 
@@ -162,9 +236,13 @@ function Dashboard() {
               <span className="dashboard-notification-dot" />
             </button>
 
-            <div className="dashboard-avatar">
+            <Link
+              to="/profile"
+              className="dashboard-avatar"
+              aria-label="Accéder à mon profil"
+            >
               <UserRound size={20} />
-            </div>
+            </Link>
           </div>
         </header>
 
@@ -174,7 +252,9 @@ function Dashboard() {
           {loading && (
             <div className="dashboard-loading">
               <LoaderCircle size={25} className="dashboard-loader" />
-              <span>Préparation de votre espace personnel...</span>
+              <span>
+                Préparation de votre espace personnel...
+              </span>
             </div>
           )}
 
@@ -182,6 +262,7 @@ function Dashboard() {
           {!loading && error && (
             <div className="dashboard-error" role="alert">
               <p>{error}</p>
+
               <button
                 type="button"
                 onClick={() => window.location.reload()}
@@ -198,7 +279,8 @@ function Dashboard() {
               <section className="dashboard-welcome">
                 <div>
                   <span className="dashboard-eyebrow">
-                    <Sparkles size={15} /> VOTRE ESPACE PERSONNEL
+                    <Sparkles size={15} />
+                    VOTRE ESPACE PERSONNEL
                   </span>
 
                   <h1>
@@ -208,7 +290,9 @@ function Dashboard() {
                   <p>
                     Chaque belle histoire commence par une découverte.
                     Prenez le temps de rencontrer des personnes qui vous correspondent.
-                  </p><br />
+                  </p>
+
+                  <br />
 
                   <div className="dashboard-member-location">
                     <MapPin size={16} />
@@ -233,22 +317,24 @@ function Dashboard() {
                   </p>
                 </div>
 
-                <button
-                  type="button"
+                <Link
+                  to="/profile"
                   className="dashboard-search-button"
                 >
-                  <Search size={18} />
-                  Explorer les profils
+                  <UserRound size={18} />
+                  Compléter mon profil
                   <ArrowUpRight size={17} />
-                </button>
+                </Link>
               </section>
 
               {/* Informations du compte */}
               <section className="dashboard-stats">
+
                 <article className="dashboard-stat-card">
                   <div className="dashboard-stat-icon rose">
                     <UserRound size={21} />
                   </div>
+
                   <div>
                     <span>Mon pseudonyme</span>
                     <strong>{member.pseudonym}</strong>
@@ -260,11 +346,13 @@ function Dashboard() {
                   <div className="dashboard-stat-icon purple">
                     <ShieldCheck size={21} />
                   </div>
+
                   <div>
                     <span>Statut du compte</span>
                     <strong>
                       {accountStatus[member.account_status] || 'Inconnu'}
                     </strong>
+
                     <small>
                       {member.email_verified_at
                         ? 'Adresse e-mail vérifiée'
@@ -277,12 +365,14 @@ function Dashboard() {
                   <div className="dashboard-stat-icon gold">
                     <MapPin size={21} />
                   </div>
+
                   <div>
                     <span>Ma localisation</span>
                     <strong>{member.city}</strong>
                     <small>Votre ville de résidence</small>
                   </div>
                 </article>
+
               </section>
 
               {/* Découverte */}
@@ -292,7 +382,9 @@ function Dashboard() {
                     <span className="dashboard-eyebrow">
                       FAITES DE NOUVELLES DÉCOUVERTES
                     </span>
+
                     <h2>Des rencontres vous attendent.</h2>
+
                     <p>
                       Votre espace de découverte sera bientôt disponible.
                     </p>
@@ -322,7 +414,10 @@ function Dashboard() {
                 <span>
                   © {new Date().getFullYear()} Amoria
                 </span>
-                <span>Des rencontres qui ont du sens. ♥</span>
+
+                <span>
+                  Des rencontres qui ont du sens. ♥
+                </span>
               </footer>
             </>
           )}

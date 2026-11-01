@@ -578,3 +578,24 @@
     width: 100%;
   }
 }
+/* Bouton de déconnexion */
+.dashboard-logout {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: #8D304F;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.dashboard-logout:hover {
+  background: rgba(141, 48, 79, 0.08);
+  color: #6F203B;
+}
+
+.dashboard-logout:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

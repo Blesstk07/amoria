@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
 import Navbar from './components/layout/Navbar'
 import Hero from './components/layout/Hero'
+import Profile from './pages/Profile'
 import Concept from './components/layout/Concept'
 import Security from './components/layout/Security'
 import Premium from './components/layout/Premium'
@@ -42,6 +43,7 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </BrowserRouter>

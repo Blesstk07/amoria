@@ -120,71 +120,102 @@ function Register() {
     setStep((previous) => Math.max(previous - 1, 1))
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault()
 
-    setError('')
-    setMessage('')
+async function handleSubmit(event) {
+  event.preventDefault()
 
-    if (formData.interests.length === 0) {
-      setError('Sélectionnez au moins un centre d’intérêt.')
-      return
-    }
+  setError('')
+  setMessage('')
 
-    if (!formData.confirmedAdult || !formData.acceptedTerms) {
-      setError('Confirmez votre majorité et acceptez les conditions.')
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          pseudonym: formData.pseudonym,
-          dateOfBirth: formData.dateOfBirth,
-          gender: formData.gender,
-          country: formData.country,
-          city: formData.city,
-          bio: formData.bio,
-          interests: formData.interests,
-          confirmedAdult: formData.confirmedAdult,
-          acceptedTerms: formData.acceptedTerms
-        })
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        setError(
-          result.message || 'Une erreur est survenue lors de l’inscription.'
-        )
-        return
-      }
-
-      if (result.data?.emailSent === false) {
-        setMessage(
-          'Votre compte a été créé, mais le mail de vérification n’a pas pu être envoyé. Contactez notre assistance.'
-        )
-      } else {
-        setMessage(
-          result.message || 'Votre compte a été créé. Consultez votre boîte mail pour vérifier votre adresse.'
-        )
-      }
-    } catch (err) {
-      console.error('Erreur lors de l’inscription :', err)
-
-      setError('Impossible de contacter le serveur. Vérifiez votre connexion.')
-    } finally {
-      setIsSubmitting(false)
-    }
+  if (formData.interests.length === 0) {
+    setError('Sélectionnez au moins un centre d’intérêt.')
+    return
   }
+
+  if (!formData.confirmedAdult || !formData.acceptedTerms) {
+    setError('Confirmez votre majorité et acceptez les conditions.')
+    return
+  }
+
+  setIsSubmitting(true)
+
+  try {
+    // 1. Récupérer le jeton CSRF de la session.
+    const csrfResponse = await fetch('/api/csrf-token', {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    const csrfResult = await csrfResponse.json()
+
+    if (
+      !csrfResponse.ok ||
+      !csrfResult.success ||
+      !csrfResult.data?.csrfToken
+    ) {
+      throw new Error(
+        'Impossible de sécuriser votre inscription. Réessayez.'
+      )
+    }
+
+    // 2. Envoyer les données avec le jeton CSRF.
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': csrfResult.data.csrfToken,
+      },
+      body: JSON.stringify({
+        email: formData.email,
+        password: formData.password,
+        pseudonym: formData.pseudonym,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        country: formData.country,
+        city: formData.city,
+        bio: formData.bio,
+        interests: formData.interests,
+        confirmedAdult: formData.confirmedAdult,
+        acceptedTerms: formData.acceptedTerms,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      setError(
+        result.message || 'Une erreur est survenue lors de l’inscription.'
+      )
+      return
+    }
+
+    if (result.data?.emailSent === false) {
+      setMessage(
+        'Votre compte a été créé, mais le mail de vérification n’a pas pu être envoyé. Contactez notre assistance.'
+      )
+    } else {
+      setMessage(
+        result.message ||
+        'Votre compte a été créé. Consultez votre boîte mail pour vérifier votre adresse.'
+      )
+    }
+
+  } catch (err) {
+    console.error('Erreur lors de l’inscription :', err)
+
+    setError(
+      err.message ||
+      'Impossible de contacter le serveur. Vérifiez votre connexion.'
+    )
+  } finally {
+    setIsSubmitting(false)
+  }
+}
 
   return (
     <main className="register-page">
@@ -193,7 +224,7 @@ function Register() {
         <div className="register-visual-overlay" />
 
         <Link to="/" className="register-brand">
-          amoria <span>♥</span>
+          Amoria <span>♥</span>
         </Link>
 
         <div className="register-visual-content">
@@ -222,7 +253,7 @@ function Register() {
       <section className="register-form-section">
         <div className="register-form-container">
           <Link to="/" className="register-mobile-brand">
-            amoria <span>♥</span>
+            Amoria <span>♥</span>
           </Link>
 
           <div className="register-heading">

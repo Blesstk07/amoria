@@ -1,0 +1,258 @@
+.profile-page {
+  min-height: 100vh;
+  padding: 50px 7%;
+  background: #fff8f4;
+  color: #292329;
+}
+
+.profile-page-header {
+  margin-bottom: 35px;
+}
+
+.profile-back-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: #8d304f;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.profile-back-link:hover {
+  text-decoration: underline;
+}
+
+.profile-page-header h1 {
+  margin: 0 0 8px;
+  font-size: 2.2rem;
+  color: #8d304f;
+}
+
+.profile-page-header p {
+  margin: 0;
+  color: #746970;
+}
+
+.profile-content {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  max-width: 950px;
+  margin: 0 auto;
+}
+
+.profile-card {
+  padding: 30px;
+  background: #fff;
+  border: 1px solid #f0e2e5;
+  border-radius: 16px;
+  box-shadow: 0 5px 20px rgba(41, 35, 41, 0.04);
+}
+
+.profile-form {
+  width: 100%;
+}
+
+.profile-form-heading {
+  margin-bottom: 25px;
+}
+
+.profile-form-heading h2 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+  color: #8d304f;
+}
+
+.profile-form-heading p {
+  margin: 0;
+  color: #746970;
+  font-size: 0.95rem;
+}
+
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-field-full {
+  grid-column: 1 / -1;
+}
+
+.profile-field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.profile-field input,
+.profile-field select,
+.profile-field textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #e7d9dd;
+  border-radius: 9px;
+  background: #fff;
+  color: #292329;
+  font: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.profile-field input:focus,
+.profile-field select:focus,
+.profile-field textarea:focus {
+  border-color: #8d304f;
+  box-shadow: 0 0 0 3px rgba(141, 48, 79, 0.1);
+}
+
+.profile-field textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.profile-field small {
+  text-align: right;
+  color: #8b7e84;
+}
+
+.profile-form button,
+.profile-save-button {
+  margin-top: 25px;
+  padding: 13px 22px;
+  border: none;
+  border-radius: 9px;
+  background: #8d304f;
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.profile-form button:hover,
+.profile-save-button:hover {
+  background: #70243e;
+  transform: translateY(-1px);
+}
+
+.profile-form button:disabled,
+.profile-save-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.interests-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.interest-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  border: 1px solid #eadde1;
+  border-radius: 10px;
+  background: #fff;
+  color: #292329;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.interest-option:hover {
+  border-color: #8d304f;
+  background: #fff8f4;
+}
+
+.interest-option.selected {
+  border-color: #8d304f;
+  background: #fdf0f3;
+  color: #8d304f;
+}
+
+.interest-icon {
+  font-size: 1.2rem;
+}
+
+.interest-check {
+  margin-left: auto;
+  font-weight: 700;
+}
+
+.interests-counter {
+  display: block;
+  margin-top: 15px;
+  color: #746970;
+}
+
+.profile-message {
+  max-width: 950px;
+  margin: 0 auto 20px;
+  padding: 14px 18px;
+  border-radius: 9px;
+  font-size: 0.95rem;
+}
+
+.error-message {
+  border: 1px solid #e8b6b6;
+  background: #fff0f0;
+  color: #a12d2d;
+}
+
+.success-message {
+  border: 1px solid #b9dfc7;
+  background: #effaf2;
+  color: #267342;
+}
+
+.profile-loading {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  color: #746970;
+}
+
+@media (max-width: 700px) {
+  .profile-page {
+    padding: 30px 5%;
+  }
+
+  .profile-card {
+    padding: 22px 18px;
+  }
+
+  .profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-field-full {
+    grid-column: auto;
+  }
+
+  .interests-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-page-header h1 {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .interests-grid {
+    grid-template-columns: 1fr;
+  }
+}

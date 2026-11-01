@@ -13,52 +13,78 @@ function Login() {
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState('idle')
 
-  async function handleSubmit(event) {
-    event.preventDefault()
+async function handleSubmit(event) {
+  event.preventDefault()
 
-    if (status === 'loading') return
+  if (status === 'loading') return
 
-    setStatus('loading')
-    setMessage('')
+  setStatus('loading')
+  setMessage('')
 
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
-      })
+  try {
+    // 1. Récupérer le jeton CSRF de la session anonyme.
+    const csrfResponse = await fetch('/api/csrf-token', {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+      },
+    })
 
-      const result = await response.json()
+    const csrfResult = await csrfResponse.json()
 
-      if (!response.ok || !result.success) {
-        setStatus('error')
-        setMessage(
-          result.message || 'Impossible de se connecter. Vérifie tes identifiants.'
-        )
-        return
-      }
+    if (!csrfResponse.ok || !csrfResult.success || !csrfResult.data?.csrfToken) {
+      throw new Error('Impossible de sécuriser la connexion. Réessaie.')
+    }
 
-    setStatus('success')
-setMessage(result.message || 'Connexion réussie !')
+    const csrfToken = csrfResult.data.csrfToken
 
-// Test : rechargement complet de l'application.
-navigate('/dashboard', { replace: true })
-    } catch (error) {
-      console.error('Erreur de connexion :', error)
+    // 2. Envoyer les identifiants avec le jeton CSRF.
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+      }),
+    })
 
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
       setStatus('error')
       setMessage(
-        'Impossible de contacter le serveur. Vérifie ta connexion et réessaie.'
+        result.message || 'Impossible de se connecter. Vérifie tes identifiants.'
       )
+      return
     }
-  }
 
+    // 3. Conserver le nouveau jeton généré après authentification.
+    if (!result.data?.csrfToken) {
+      throw new Error('Le serveur n’a pas fourni le nouveau jeton CSRF.')
+    }
+
+    sessionStorage.setItem('csrfToken', result.data.csrfToken)
+
+    setStatus('success')
+    setMessage(result.message || 'Connexion réussie !')
+
+    navigate('/dashboard', { replace: true })
+
+  } catch (error) {
+    console.error('Erreur de connexion :', error)
+
+    setStatus('error')
+    setMessage(
+      error.message || 'Impossible de contacter le serveur. Vérifie ta connexion et réessaie.'
+    )
+  }
+}
   return (
     <main className="login-page">
 
@@ -67,7 +93,7 @@ navigate('/dashboard', { replace: true })
         <div className="login-visual-overlay" />
 
         <Link to="/" className="login-brand">
-          amoria <span>♥</span>
+          Amoria <span>♥</span>
         </Link>
 
         <div className="login-visual-content">
