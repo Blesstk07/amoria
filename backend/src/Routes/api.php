@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../Controllers/DashboardController.php';
 require_once __DIR__ . '/../Controllers/ProfileController.php';
 require_once __DIR__ . '/../Controllers/DiscoveryController.php';
+require_once __DIR__ . '/../Controllers/InteractionController.php';
 require_once __DIR__ . '/../Security/Csrf.php';
 
 return function (Router $router): void {
@@ -85,10 +86,29 @@ return function (Router $router): void {
         'discover'
     ]);
 
-    // Enregistrement d'une consultation
-    // Cette route POST est automatiquement protégée par CSRF.
     $router->post('/api/discover/view', [
         DiscoveryController::class,
         'recordView'
+    ]);
+
+    // Likes, Pass et Matches
+    $router->post('/api/interactions/action', [
+        InteractionController::class,
+        'sendAction'
+    ]);
+
+    $router->get('/api/interactions/likes', [
+        InteractionController::class,
+        'getLikes'
+    ]);
+
+    $router->get('/api/interactions/matches', [
+        InteractionController::class,
+        'getMatches'
+    ]);
+
+    $router->post('/api/interactions/matches/end', [
+        InteractionController::class,
+        'endMatch'
     ]);
 };

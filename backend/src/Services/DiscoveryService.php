@@ -130,20 +130,30 @@ class DiscoveryService
                       )
               )
 
-              -- Exclure les profils déjà aimés ou passés
+              -- Exclure les Likes définitifs et les Pass récents
               AND NOT EXISTS (
                     SELECT 1
                     FROM profile_actions pa
                     WHERE pa.actor_id = :action_viewer
                       AND pa.target_id = p.id
+                      AND (
+                          pa.action_type = 'LIKE'
+                          OR (
+                              pa.action_type = 'PASS'
+                              AND pa.updated_at >
+                                  DATE_SUB(NOW(), INTERVAL 30 DAY)
+                          )
+                      )
               )
 
-              -- Exclure les profils déjà présentés
+              -- Exclure les consultations des 30 derniers jours
               AND NOT EXISTS (
                     SELECT 1
                     FROM discovery_views dv
                     WHERE dv.viewer_id = :views_viewer
                       AND dv.viewed_id = p.id
+                      AND dv.viewed_at >
+                          DATE_SUB(NOW(), INTERVAL 30 DAY)
               )
 
             ORDER BY p.id ASC
@@ -410,15 +420,16 @@ class DiscoveryService
         }
 
         $stmt = $pdo->prepare("
-            INSERT IGNORE INTO discovery_views (
+            INSERT INTO discovery_views (
                 viewer_id,
                 viewed_id
             )
-            SELECT
+            VALUES (
                 :viewer_id,
-                p.id
-            FROM profiles p
-            WHERE p.id = :viewed_id
+                :viewed_id
+            )
+            ON DUPLICATE KEY UPDATE
+                viewed_at = CURRENT_TIMESTAMP
         ");
 
         $stmt->execute([
