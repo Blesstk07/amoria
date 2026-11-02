@@ -23,6 +23,9 @@ return function (Router $router): void {
 
     $router->get('/health', $health);
     $router->get('/api/health', $health);
+    $router->post('/api/blocks', [InteractionController::class, 'blockUser']);
+    $router->delete('/api/blocks', [InteractionController::class, 'unblockUser']);
+    $router->get('/api/blocks', [InteractionController::class, 'getBlockedUsers']);
 
     // Récupération du jeton CSRF
     $router->get('/api/csrf-token', function (): void {

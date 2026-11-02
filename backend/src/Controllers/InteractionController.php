@@ -331,4 +331,156 @@ class InteractionController
             );
         }
     }
+
+    /**
+     * Bloquer un profil.
+     */
+    public static function blockUser(): void
+    {
+        try {
+            $pdo = Database::getConnection();
+            $context = self::getContext($pdo);
+            $input = self::getJsonInput();
+
+            if (
+                !isset($input['profile_id']) ||
+                filter_var(
+                    $input['profile_id'],
+                    FILTER_VALIDATE_INT
+                ) === false
+            ) {
+                self::respond(
+                    422,
+                    false,
+                    'Identifiant de profil invalide.'
+                );
+            }
+
+            InteractionService::blockUser(
+                $pdo,
+                $context['profile_id'],
+                (int) $input['profile_id']
+            );
+
+            self::respond(
+                200,
+                true,
+                'Profil bloqué.'
+            );
+
+        } catch (InteractionException $e) {
+            self::respond(
+                $e->httpStatus,
+                false,
+                $e->getMessage()
+            );
+
+        } catch (Throwable $e) {
+            error_log(
+                'InteractionController blockUser : '
+                . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Impossible de bloquer ce profil.'
+            );
+        }
+    }
+
+    /**
+     * Débloquer un profil.
+     */
+    public static function unblockUser(): void
+    {
+        try {
+            $pdo = Database::getConnection();
+            $context = self::getContext($pdo);
+            $input = self::getJsonInput();
+
+            if (
+                !isset($input['profile_id']) ||
+                filter_var(
+                    $input['profile_id'],
+                    FILTER_VALIDATE_INT
+                ) === false
+            ) {
+                self::respond(
+                    422,
+                    false,
+                    'Identifiant de profil invalide.'
+                );
+            }
+
+            InteractionService::unblockUser(
+                $pdo,
+                $context['profile_id'],
+                (int) $input['profile_id']
+            );
+
+            self::respond(
+                200,
+                true,
+                'Profil débloqué.'
+            );
+
+        } catch (InteractionException $e) {
+            self::respond(
+                $e->httpStatus,
+                false,
+                $e->getMessage()
+            );
+
+        } catch (Throwable $e) {
+            error_log(
+                'InteractionController unblockUser : '
+                . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Impossible de débloquer ce profil.'
+            );
+        }
+    }
+
+    /**
+     * Consulter les profils bloqués.
+     */
+    public static function getBlockedUsers(): void
+    {
+        try {
+            $pdo = Database::getConnection();
+            $context = self::getContext($pdo);
+
+            $blockedUsers = InteractionService::getBlockedUsers(
+                $pdo,
+                $context['profile_id']
+            );
+
+            self::respond(
+                200,
+                true,
+                'Liste des profils bloqués récupérée.',
+                [
+                    'blocked_users' => $blockedUsers,
+                    'total' => count($blockedUsers)
+                ]
+            );
+
+        } catch (Throwable $e) {
+            error_log(
+                'InteractionController getBlockedUsers : '
+                . $e->getMessage()
+            );
+
+            self::respond(
+                500,
+                false,
+                'Impossible de récupérer les profils bloqués.'
+            );
+        }
+    }
 }

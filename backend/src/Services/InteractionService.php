@@ -314,6 +314,343 @@ class InteractionService
     }
  
     /**
+     * Bloquer un profil.
+     */
+    public static function blockUser(
+        PDO $pdo,
+        int $actorId,
+        int $targetId
+    ): void {
+        if ($actorId <= 0 || $targetId <= 0 || $actorId === $targetId) {
+            throw new InteractionException(
+                'Profil cible invalide.',
+                422
+            );
+        }
+
+        $pdo->beginTransaction();
+
+        try {
+            // Verrouiller les deux profils dans le même ordre
+            // que applyAction() et endMatch().
+            $firstId = min($actorId, $targetId);
+            $secondId = max($actorId, $targetId);
+
+            $lockStmt = $pdo->prepare("
+                SELECT id
+                FROM profiles
+                WHERE id IN (:first_id, :second_id)
+                ORDER BY id
+                FOR UPDATE
+            ");
+
+            $lockStmt->execute([
+                'first_id' => $firstId,
+                'second_id' => $secondId
+            ]);
+
+            if (count($lockStmt->fetchAll(PDO::FETCH_COLUMN)) !== 2) {
+                throw new InteractionException(
+                    'Profil introuvable.',
+                    404
+                );
+            }
+
+            // Enregistrer ou réactiver le blocage.
+            $blockStmt = $pdo->prepare("
+                INSERT INTO blocks (
+                    blocker_id,
+                    blocked_id,
+                    status
+                )
+                VALUES (
+                    :blocker_id,
+                    :blocked_id,
+                    'ACTIVE'
+                )
+                ON DUPLICATE KEY UPDATE
+                    status = 'ACTIVE',
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+
+            $blockStmt->execute([
+                'blocker_id' => $actorId,
+                'blocked_id' => $targetId
+            ]);
+
+            // Rechercher et verrouiller le Match éventuel.
+            $matchStmt = $pdo->prepare("
+                SELECT id, status
+                FROM matches
+                WHERE profile_a_id = :profile_a
+                  AND profile_b_id = :profile_b
+                LIMIT 1
+                FOR UPDATE
+            ");
+
+            $matchStmt->execute([
+                'profile_a' => $firstId,
+                'profile_b' => $secondId
+            ]);
+
+            $match = $matchStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Un Match actif devient BLOCKED.
+            if ($match && $match['status'] === 'ACTIVE') {
+                $updateMatch = $pdo->prepare("
+                    UPDATE matches
+                    SET status = 'BLOCKED',
+                        ended_at = CURRENT_TIMESTAMP
+                    WHERE id = :match_id
+                      AND status = 'ACTIVE'
+                ");
+
+                $updateMatch->execute([
+                    'match_id' => (int) $match['id']
+                ]);
+            }
+
+            // Supprimer les anciennes interactions réciproques.
+            $deleteActions = $pdo->prepare("
+                DELETE FROM profile_actions
+                WHERE (
+                    actor_id = :first_actor
+                    AND target_id = :first_target
+                )
+                OR (
+                    actor_id = :second_actor
+                    AND target_id = :second_target
+                )
+            ");
+
+            $deleteActions->execute([
+                'first_actor' => $firstId,
+                'first_target' => $secondId,
+                'second_actor' => $secondId,
+                'second_target' => $firstId
+            ]);
+
+            // Réinitialiser les consultations réciproques.
+            $deleteViews = $pdo->prepare("
+                DELETE FROM discovery_views
+                WHERE (
+                    viewer_id = :first_viewer
+                    AND viewed_id = :first_viewed
+                )
+                OR (
+                    viewer_id = :second_viewer
+                    AND viewed_id = :second_viewed
+                )
+            ");
+
+            $deleteViews->execute([
+                'first_viewer' => $firstId,
+                'first_viewed' => $secondId,
+                'second_viewer' => $secondId,
+                'second_viewed' => $firstId
+            ]);
+
+            $pdo->commit();
+
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Débloquer un profil.
+     */
+    public static function unblockUser(
+        PDO $pdo,
+        int $actorId,
+        int $targetId
+    ): void {
+        if ($actorId <= 0 || $targetId <= 0 || $actorId === $targetId) {
+            throw new InteractionException(
+                'Profil cible invalide.',
+                422
+            );
+        }
+
+        $pdo->beginTransaction();
+
+        try {
+            $firstId = min($actorId, $targetId);
+            $secondId = max($actorId, $targetId);
+
+            // Même ordre de verrouillage que les autres opérations.
+            $lockStmt = $pdo->prepare("
+                SELECT id
+                FROM profiles
+                WHERE id IN (:first_id, :second_id)
+                ORDER BY id
+                FOR UPDATE
+            ");
+
+            $lockStmt->execute([
+                'first_id' => $firstId,
+                'second_id' => $secondId
+            ]);
+
+            if (count($lockStmt->fetchAll(PDO::FETCH_COLUMN)) !== 2) {
+                throw new InteractionException(
+                    'Profil introuvable.',
+                    404
+                );
+            }
+
+            // Vérifier le blocage créé par le membre connecté.
+            $blockStmt = $pdo->prepare("
+                SELECT id
+                FROM blocks
+                WHERE blocker_id = :blocker_id
+                  AND blocked_id = :blocked_id
+                  AND status = 'ACTIVE'
+                LIMIT 1
+                FOR UPDATE
+            ");
+
+            $blockStmt->execute([
+                'blocker_id' => $actorId,
+                'blocked_id' => $targetId
+            ]);
+
+            $blockId = $blockStmt->fetchColumn();
+
+            if (!$blockId) {
+                throw new InteractionException(
+                    'Aucun blocage actif trouvé pour ce profil.',
+                    404
+                );
+            }
+
+            // Désactiver le blocage.
+            $updateBlock = $pdo->prepare("
+                UPDATE blocks
+                SET status = 'INACTIVE'
+                WHERE id = :block_id
+                  AND status = 'ACTIVE'
+            ");
+
+            $updateBlock->execute([
+                'block_id' => (int) $blockId
+            ]);
+
+            // Verrouiller le Match éventuel.
+            $matchStmt = $pdo->prepare("
+                SELECT id, status
+                FROM matches
+                WHERE profile_a_id = :profile_a
+                  AND profile_b_id = :profile_b
+                LIMIT 1
+                FOR UPDATE
+            ");
+
+            $matchStmt->execute([
+                'profile_a' => $firstId,
+                'profile_b' => $secondId
+            ]);
+
+            $match = $matchStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Ne rétablir ENDED que si aucun blocage
+            // ne reste actif dans les deux sens.
+            if ($match && $match['status'] === 'BLOCKED') {
+                $remainingBlock = $pdo->prepare("
+                    SELECT id
+                    FROM blocks
+                    WHERE status = 'ACTIVE'
+                      AND (
+                          (
+                              blocker_id = :first_blocker
+                              AND blocked_id = :first_blocked
+                          )
+                          OR
+                          (
+                              blocker_id = :second_blocker
+                              AND blocked_id = :second_blocked
+                          )
+                      )
+                    LIMIT 1
+                ");
+
+                $remainingBlock->execute([
+                    'first_blocker' => $firstId,
+                    'first_blocked' => $secondId,
+                    'second_blocker' => $secondId,
+                    'second_blocked' => $firstId
+                ]);
+
+                if (!$remainingBlock->fetchColumn()) {
+                    $updateMatch = $pdo->prepare("
+                        UPDATE matches
+                        SET status = 'ENDED'
+                        WHERE id = :match_id
+                          AND status = 'BLOCKED'
+                    ");
+
+                    $updateMatch->execute([
+                        'match_id' => (int) $match['id']
+                    ]);
+                }
+            }
+
+            $pdo->commit();
+
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Récupérer les profils bloqués par un membre.
+     */
+    public static function getBlockedUsers(
+        PDO $pdo,
+        int $profileId
+    ): array {
+        $stmt = $pdo->prepare("
+            SELECT
+                b.id AS block_id,
+                b.blocked_id AS profile_id,
+                b.created_at AS blocked_at,
+                p.pseudonym,
+                p.gender,
+                p.country,
+                p.city
+            FROM blocks b
+            INNER JOIN profiles p
+                ON p.id = b.blocked_id
+            WHERE b.blocker_id = :profile_id
+              AND b.status = 'ACTIVE'
+            ORDER BY b.created_at DESC
+        ");
+
+        $stmt->execute([
+            'profile_id' => $profileId
+        ]);
+
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($users as &$user) {
+            $user['block_id'] = (int) $user['block_id'];
+            $user['profile_id'] = (int) $user['profile_id'];
+        }
+
+        unset($user);
+
+        return $users;
+    }
+
+    /**
      * Vérifier que chaque profil correspond aux préférences de l'autre.
      */
     private static function validateMutualPreferences(
