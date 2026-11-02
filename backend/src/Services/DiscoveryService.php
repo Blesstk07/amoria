@@ -146,16 +146,6 @@ class DiscoveryService
                       )
               )
 
-              -- Exclure les consultations des 30 derniers jours
-              AND NOT EXISTS (
-                    SELECT 1
-                    FROM discovery_views dv
-                    WHERE dv.viewer_id = :views_viewer
-                      AND dv.viewed_id = p.id
-                      AND dv.viewed_at >
-                          DATE_SUB(NOW(), INTERVAL 30 DAY)
-              )
-
             ORDER BY p.id ASC
             LIMIT :result_limit
         ";
@@ -305,13 +295,6 @@ class DiscoveryService
         // Actions
         $stmt->bindValue(
             ':action_viewer',
-            $viewerId,
-            PDO::PARAM_INT
-        );
-
-        // Consultations
-        $stmt->bindValue(
-            ':views_viewer',
             $viewerId,
             PDO::PARAM_INT
         );
